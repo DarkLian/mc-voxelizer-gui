@@ -16,8 +16,11 @@
     "opener:allow-open-path",
     "fs:allow-write-text-file",
     "fs:allow-read-file",
+    "shell:allow-spawn",
+    "shell:allow-kill",
+    "shell:allow-stdin-write",
     {
-      "identifier": "shell:allow-execute",
+      "identifier": "shell:allow-spawn",
       "allow": [
         {
           "name": "binaries/mc_voxelizer-v1.3.0",

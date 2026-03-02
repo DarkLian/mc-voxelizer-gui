@@ -5,193 +5,273 @@
 /* ── Base ──────────────────────────────────────────────────────────────────── */
 
 :root {
-  color-scheme: dark;
+    color-scheme: dark;
 }
 
 * {
-  box-sizing: border-box;
-  -webkit-font-smoothing: antialiased;
+    box-sizing: border-box;
+    -webkit-font-smoothing: antialiased;
 }
 
 body {
-  margin: 0;
-  background: #0A0A0F;
-  color: #E2E2E8;
-  font-family: "Outfit", system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  overflow: hidden;
-  user-select: none;
-  height: 100vh;
-  width: 100vw;
+    margin: 0;
+    background: #0A0A0F;
+    color: #E2E2E8;
+    font-family: "Outfit", system-ui, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow: hidden;
+    user-select: none;
+    height: 100vh;
+    width: 100vw;
 }
 
 #root {
-  height: 100vh;
-  display: flex;
-  flex-direction: column;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ── Scrollbars ────────────────────────────────────────────────────────────── */
 
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #2A2A3A; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #3A3A4E; }
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #2A2A3A;
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #3A3A4E;
+}
 
 /* ── Typography helpers ────────────────────────────────────────────────────── */
 
-.mono { font-family: "JetBrains Mono", Consolas, monospace; }
+.mono {
+    font-family: "JetBrains Mono", Consolas, monospace;
+}
 
 /* ── Tauri drag region ─────────────────────────────────────────────────────── */
 
 .titlebar {
-  -webkit-app-region: drag;
-  height: 32px;
-  background: #0A0A0F;
-  border-bottom: 1px solid #1E1E2A;
-  display: flex;
-  align-items: center;
-  padding: 0 12px;
-  flex-shrink: 0;
+    -webkit-app-region: drag;
+    height: 32px;
+    background: #0A0A0F;
+    border-bottom: 1px solid #1E1E2A;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    flex-shrink: 0;
 }
 
 .titlebar-buttons {
-  -webkit-app-region: no-drag;
-  display: flex;
-  gap: 6px;
-  margin-left: auto;
+    -webkit-app-region: no-drag;
+    display: flex;
+    gap: 6px;
+    margin-left: auto;
 }
 
 /* ── Drag & drop overlay ───────────────────────────────────────────────────── */
 
 .drop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  background: rgba(0, 201, 167, 0.06);
-  border: 2px dashed #00C9A7;
-  border-radius: 8px;
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.15s ease-out;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgba(0, 201, 167, 0.06);
+    border: 2px dashed #00C9A7;
+    border-radius: 8px;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeIn 0.15s ease-out;
 }
 
 /* ── Status accent bars on file cards ─────────────────────────────────────── */
 
-.status-bar-idle     { background: #4A4A5E; }
-.status-bar-queued   { background: #4A90D9; }
-.status-bar-running  { background: #FF9500; }
-.status-bar-paused   { background: #C9A700; }
-.status-bar-done     { background: #00C97A; }
-.status-bar-error    { background: #FF4757; }
-.status-bar-cancelled{ background: #2A2A3A; }
+.status-bar-idle {
+    background: #4A4A5E;
+}
+
+.status-bar-queued {
+    background: #4A90D9;
+}
+
+.status-bar-running {
+    background: #FF9500;
+}
+
+.status-bar-paused {
+    background: #C9A700;
+}
+
+.status-bar-done {
+    background: #00C97A;
+}
+
+.status-bar-error {
+    background: #FF4757;
+}
+
+.status-bar-cancelled {
+    background: #2A2A3A;
+}
 
 /* ── Log line colours ──────────────────────────────────────────────────────── */
 
-.log-info    { color: #9595A8; }
-.log-warning { color: #FFB347; }
-.log-error   { color: #FF4757; }
-.log-debug   { color: #4A4A5E; }
-.log-done    { color: #00C97A; }
+.log-info {
+    color: #9595A8;
+}
+
+.log-warning {
+    color: #FFB347;
+}
+
+.log-error {
+    color: #FF4757;
+}
+
+.log-debug {
+    color: #4A4A5E;
+}
+
+.log-done {
+    color: #00C97A;
+}
 
 /* ── Input / Select base ───────────────────────────────────────────────────── */
 
 .field {
-  @apply bg-panel border border-border-bright rounded px-3 py-1.5 text-sm
-         text-text-primary outline-none w-full transition-colors duration-150;
+    @apply bg-panel border border-border-bright rounded px-3 py-1.5 text-sm
+    text-text-primary outline-none w-full transition-colors duration-150;
 }
-.field:focus  { @apply border-accent; }
-.field::placeholder { color: #4A4A5E; }
-.field:disabled { @apply opacity-40 cursor-not-allowed; }
+
+.field:focus {
+    @apply border-accent;
+}
+
+.field::placeholder {
+    color: #4A4A5E;
+}
+
+.field:disabled {
+    @apply opacity-40 cursor-not-allowed;
+}
 
 /* ── Buttons ───────────────────────────────────────────────────────────────── */
 
 .btn {
-  @apply inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm
-         font-medium transition-all duration-150 cursor-pointer border-none
-         outline-none select-none whitespace-nowrap;
+    @apply inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm
+    font-medium transition-all duration-150 cursor-pointer border-none
+    outline-none select-none whitespace-nowrap;
 }
-.btn:disabled { @apply opacity-40 cursor-not-allowed pointer-events-none; }
+
+.btn:disabled {
+    @apply opacity-40 cursor-not-allowed pointer-events-none;
+}
 
 .btn-primary {
-  @apply btn bg-accent text-base hover:brightness-110 active:brightness-90;
+    @apply btn bg-accent text-base hover:brightness-110 active:brightness-90;
 }
+
 .btn-ghost {
-  @apply btn bg-transparent text-text-secondary border border-border-bright
-         hover:bg-card hover:text-text-primary active:bg-card-hover;
+    @apply btn bg-transparent text-text-secondary border border-border-bright
+    hover:bg-card hover:text-text-primary active:bg-card-hover;
 }
+
 .btn-danger {
-  @apply btn bg-transparent text-error border border-error/30
-         hover:bg-error/10 active:bg-error/20;
+    @apply btn bg-transparent text-error border border-error/30
+    hover:bg-error/10 active:bg-error/20;
 }
+
 .btn-icon {
-  @apply btn bg-transparent text-text-secondary hover:text-text-primary
-         hover:bg-card-hover p-1.5;
+    @apply btn bg-transparent text-text-secondary hover:text-text-primary
+    hover:bg-card-hover p-1.5;
 }
 
 /* ── Animated spinner ──────────────────────────────────────────────────────── */
 
-@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 1.5px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid currentColor;
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
 }
 
 /* ── Progress bar ──────────────────────────────────────────────────────────── */
 
 .progress-bar {
-  height: 3px;
-  background: #1E1E2A;
-  border-radius: 2px;
-  overflow: hidden;
+    height: 3px;
+    background: #1E1E2A;
+    border-radius: 2px;
+    overflow: hidden;
 }
+
 .progress-fill {
-  height: 100%;
-  background: #FF9500;
-  border-radius: 2px;
-  transition: width 0.4s ease;
+    height: 100%;
+    background: #FF9500;
+    border-radius: 2px;
+    transition: width 0.4s ease;
 }
-.progress-fill.done   { background: #00C97A; }
-.progress-fill.paused { background: #C9A700; }
+
+.progress-fill.done {
+    background: #00C97A;
+}
+
+.progress-fill.paused {
+    background: #C9A700;
+}
 
 /* ── Top loading bar ───────────────────────────────────────────────────────── */
 
 .top-progress-bar {
-  height: 2px;
-  background: #1E1E2A;
-  flex-shrink: 0;
+    height: 2px;
+    background: #1E1E2A;
+    flex-shrink: 0;
 }
+
 .top-progress-fill {
-  height: 100%;
-  background: linear-gradient(90deg, #00C9A7, #00C97A);
-  transition: width 0.5s ease;
+    height: 100%;
+    background: linear-gradient(90deg, #00C9A7, #00C97A);
+    transition: width 0.5s ease;
 }
 
 /* ── Tooltip ───────────────────────────────────────────────────────────────── */
 
-[title] { cursor: default; }
+[title] {
+    cursor: default;
+}
 
 /* ── Checkbox ──────────────────────────────────────────────────────────────── */
 
 .checkbox {
-  @apply w-4 h-4 rounded border border-border-bright bg-panel cursor-pointer
-         accent-accent;
+    @apply w-4 h-4 rounded border border-border-bright bg-panel cursor-pointer
+    accent-accent;
 }
 
 /* ── Segmented quality slider ──────────────────────────────────────────────── */
 
 .quality-segment {
-  @apply flex-1 py-1 text-xs text-center rounded cursor-pointer transition-all
-         border border-transparent text-text-muted hover:text-text-secondary;
+    @apply flex-1 py-1 text-xs text-center rounded cursor-pointer transition-all
+    border border-transparent text-text-muted hover:text-text-secondary;
 }
+
 .quality-segment.active {
-  @apply bg-accent text-base border-accent font-medium;
+    @apply bg-accent text-base border-accent font-medium;
 }

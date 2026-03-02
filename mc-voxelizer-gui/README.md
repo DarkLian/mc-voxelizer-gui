@@ -27,17 +27,18 @@ Everything below this line is for **developers only**.
 
 Install these once on your Windows 11 machine:
 
-| Tool | Download | Notes |
-|---|---|---|
-| Node.js 20+ | https://nodejs.org | Use the LTS version |
-| Rust (stable) | https://rustup.rs | Run `rustup update stable` after |
-| VS Build Tools | https://visualstudio.microsoft.com/visual-cpp-build-tools/ | Select "Desktop development with C++" workload |
-| CLion | https://www.jetbrains.com/clion/ | Recommended IDE |
-| Rust plugin for CLion | CLion → Settings → Plugins → search "Rust" | JetBrains official plugin |
+| Tool                  | Download                                                   | Notes                                          |
+|-----------------------|------------------------------------------------------------|------------------------------------------------|
+| Node.js 20+           | https://nodejs.org                                         | Use the LTS version                            |
+| Rust (stable)         | https://rustup.rs                                          | Run `rustup update stable` after               |
+| VS Build Tools        | https://visualstudio.microsoft.com/visual-cpp-build-tools/ | Select "Desktop development with C++" workload |
+| CLion                 | https://www.jetbrains.com/clion/                           | Recommended IDE                                |
+| Rust plugin for CLion | CLion → Settings → Plugins → search "Rust"                 | JetBrains official plugin                      |
 
 > WebView2 is already installed on Windows 11 — nothing to do.
 
 After installing Rust, verify the MSVC target is present:
+
 ```
 rustup target list --installed
 # Should include: x86_64-pc-windows-msvc
@@ -79,8 +80,10 @@ mc-voxelizer-gui/                  ← developer source, never distributed
 
 1. Open CLion and choose **File → Open**, then select the `mc-voxelizer-gui` folder.
 2. CLion will detect both `package.json` (React side) and `Cargo.toml` (Rust side) and configure them automatically.
-3. Install the **Rust plugin** if prompted (or go to **Settings → Plugins → Marketplace**, search "Rust", install the JetBrains plugin). This gives you full autocomplete and error highlighting for `lib.rs`.
-4. For npm commands, use CLion's built-in terminal (**Alt+F12**) or add an npm run configuration via **Run → Edit Configurations → + → npm**.
+3. Install the **Rust plugin** if prompted (or go to **Settings → Plugins → Marketplace**, search "Rust", install the
+   JetBrains plugin). This gives you full autocomplete and error highlighting for `lib.rs`.
+4. For npm commands, use CLion's built-in terminal (**Alt+F12**) or add an npm run configuration via **Run → Edit
+   Configurations → + → npm**.
 
 ---
 
@@ -172,14 +175,14 @@ to users — they contain everything needed with no external dependencies.
 
 ## Keyboard Shortcuts
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl+O` | Add files |
-| `Ctrl+Enter` | Convert selected |
-| `Ctrl+A` | Select all |
-| `Escape` | Deselect all |
-| `Ctrl+L` | Toggle log drawer |
-| `Ctrl+,` | Open preferences |
+| Shortcut     | Action            |
+|--------------|-------------------|
+| `Ctrl+O`     | Add files         |
+| `Ctrl+Enter` | Convert selected  |
+| `Ctrl+A`     | Select all        |
+| `Escape`     | Deselect all      |
+| `Ctrl+L`     | Toggle log drawer |
+| `Ctrl+,`     | Open preferences  |
 
 ---
 

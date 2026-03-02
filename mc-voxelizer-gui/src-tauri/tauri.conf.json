@@ -39,9 +39,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": [
-      "binaries/mc_voxelizer-v1.3.0"
-    ],
+    "externalBin": ["binaries/mc_voxelizer-v1.3.0"],
     "windows": {
       "wix": {},
       "nsis": {}

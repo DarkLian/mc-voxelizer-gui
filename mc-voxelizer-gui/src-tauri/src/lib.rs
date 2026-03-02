@@ -62,8 +62,8 @@ pub mod commands {
         {
             use windows::Win32::Foundation::CloseHandle;
             use windows::Win32::System::Diagnostics::ToolHelp::{
-                CreateToolhelp32Snapshot, Thread32First, Thread32Next,
-                THREADENTRY32, TH32CS_SNAPTHREAD,
+                CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD,
+                THREADENTRY32,
             };
             use windows::Win32::System::Threading::{
                 OpenThread, SuspendThread, THREAD_SUSPEND_RESUME,
@@ -81,7 +81,9 @@ pub mod commands {
                 if Thread32First(snapshot, &mut entry).is_ok() {
                     loop {
                         if entry.th32OwnerProcessID == pid {
-                            if let Ok(handle) = OpenThread(THREAD_SUSPEND_RESUME, false, entry.th32ThreadID) {
+                            if let Ok(handle) =
+                                OpenThread(THREAD_SUSPEND_RESUME, false, entry.th32ThreadID)
+                            {
                                 SuspendThread(handle);
                                 let _ = CloseHandle(handle);
                             }
@@ -106,8 +108,8 @@ pub mod commands {
         {
             use windows::Win32::Foundation::CloseHandle;
             use windows::Win32::System::Diagnostics::ToolHelp::{
-                CreateToolhelp32Snapshot, Thread32First, Thread32Next,
-                THREADENTRY32, TH32CS_SNAPTHREAD,
+                CreateToolhelp32Snapshot, Thread32First, Thread32Next, TH32CS_SNAPTHREAD,
+                THREADENTRY32,
             };
             use windows::Win32::System::Threading::{
                 OpenThread, ResumeThread, THREAD_SUSPEND_RESUME,
@@ -125,7 +127,9 @@ pub mod commands {
                 if Thread32First(snapshot, &mut entry).is_ok() {
                     loop {
                         if entry.th32OwnerProcessID == pid {
-                            if let Ok(handle) = OpenThread(THREAD_SUSPEND_RESUME, false, entry.th32ThreadID) {
+                            if let Ok(handle) =
+                                OpenThread(THREAD_SUSPEND_RESUME, false, entry.th32ThreadID)
+                            {
                                 ResumeThread(handle);
                                 let _ = CloseHandle(handle);
                             }
