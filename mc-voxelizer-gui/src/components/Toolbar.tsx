@@ -1,4 +1,4 @@
-import {Pause, Play, Plus, RefreshCw, Settings, Square, Terminal,} from "lucide-react";
+import {AlertTriangle, Pause, Play, Plus, RefreshCw, Settings, Square, Terminal,} from "lucide-react";
 import {open} from "@tauri-apps/plugin-dialog";
 import {selectRunningFile, useAppStore} from "@/store/useAppStore";
 
@@ -6,6 +6,7 @@ export interface AppConversionControls {
     killActive: () => Promise<void>;
     pauseActive: () => Promise<void>;
     resumeActive: () => Promise<void>;
+    forceReset: () => Promise<void>;
 }
 
 interface Props {
@@ -13,9 +14,10 @@ interface Props {
 }
 
 export function Toolbar({controls}: Props) {
-    const {killActive, pauseActive, resumeActive} = controls;
+    const {killActive, pauseActive, resumeActive, forceReset} = controls;
 
     const runningFile = useAppStore(selectRunningFile);
+    const activeId = useAppStore((s) => s.activeId);
     const selectedIds = useAppStore((s) => s.selectedIds);
     const logBadge = useAppStore((s) => s.logBadgeCount);
     const files = useAppStore((s) => s.files);
@@ -27,6 +29,9 @@ export function Toolbar({controls}: Props) {
     const isPaused = runningFile?.status === "paused";
     const isRunning = runningFile?.status === "running";
     const anyActive = isRunning || isPaused;
+
+    // Detect stuck state: activeId is set but child is gone (no PID on running file)
+    const isStuck = activeId !== null && runningFile?.status === "running" && !runningFile?.pid;
 
     // Files that can be queued (selected + idle/error/cancelled)
     const queueableCount = [...selectedIds].filter((id) => {
@@ -56,12 +61,12 @@ export function Toolbar({controls}: Props) {
     }
 
     return (
-        <header className="flex items-center gap-2 px-3 py-2 border-b border-border
+        <header className="flex items-center gap-2 px-3 py-2.5 border-b border-border
                        bg-panel flex-shrink-0">
 
             {/* Add files */}
-            <button className="btn-ghost text-xs" onClick={handleAddFiles} title="Add files (Ctrl+O)">
-                <Plus size={14}/>
+            <button className="btn-ghost text-sm" onClick={handleAddFiles} title="Add files (Ctrl+O)">
+                <Plus size={15}/>
                 Add Files
             </button>
 
@@ -69,12 +74,12 @@ export function Toolbar({controls}: Props) {
 
             {/* Convert selected */}
             <button
-                className="btn-primary text-xs"
+                className="btn-primary text-sm"
                 disabled={queueableCount === 0}
                 onClick={enqueueSelected}
-                title="Convert selected files"
+                title="Convert selected files (Ctrl+Enter)"
             >
-                <Play size={13}/>
+                <Play size={14}/>
                 Convert
                 {queueableCount > 0 && (
                     <span className="ml-0.5 bg-base/20 rounded px-1">{queueableCount}</span>
@@ -84,11 +89,11 @@ export function Toolbar({controls}: Props) {
             {/* Pause / Resume */}
             {anyActive && (
                 <button
-                    className="btn-ghost text-xs"
+                    className="btn-ghost text-sm"
                     onClick={isPaused ? resumeActive : pauseActive}
                     title={isPaused ? "Resume conversion" : "Pause conversion"}
                 >
-                    {isPaused ? <Play size={13}/> : <Pause size={13}/>}
+                    {isPaused ? <Play size={14}/> : <Pause size={14}/>}
                     {isPaused ? "Resume" : "Pause"}
                 </button>
             )}
@@ -96,23 +101,35 @@ export function Toolbar({controls}: Props) {
             {/* Cancel all */}
             {anyActive && (
                 <button
-                    className="btn-danger text-xs"
+                    className="btn-danger text-sm"
                     onClick={handleCancelAll}
                     title="Cancel all conversions"
                 >
-                    <Square size={13}/>
+                    <Square size={14}/>
                     Cancel
+                </button>
+            )}
+
+            {/* Force reset stuck conversion */}
+            {isStuck && (
+                <button
+                    className="btn-ghost text-sm text-warning border-warning/20 hover:bg-warning/10"
+                    onClick={forceReset}
+                    title="The conversion appears stuck. Click to force-skip and continue the queue."
+                >
+                    <AlertTriangle size={14}/>
+                    Force Skip
                 </button>
             )}
 
             {/* Retry failed */}
             {!anyActive && errorIds.length > 0 && (
                 <button
-                    className="btn-ghost text-xs text-warning border-warning/20 hover:bg-warning/10"
+                    className="btn-ghost text-sm text-warning border-warning/20 hover:bg-warning/10"
                     onClick={() => enqueueIds(errorIds)}
                     title="Retry all failed files"
                 >
-                    <RefreshCw size={13}/>
+                    <RefreshCw size={14}/>
                     Retry ({errorIds.length})
                 </button>
             )}
@@ -122,12 +139,12 @@ export function Toolbar({controls}: Props) {
 
             {/* Active file indicator */}
             {runningFile && (
-                <div className="flex items-center gap-2 text-xs text-text-muted bg-card
+                <div className="flex items-center gap-2 text-sm text-text-muted bg-card
                         rounded px-2 py-1 border border-border max-w-xs truncate">
                     <span className="spinner text-running"/>
                     <span className="truncate">
-            {runningFile.settings.modelName} — {runningFile.progress}%
-          </span>
+                        {runningFile.settings.modelName} — {runningFile.progress}%
+                    </span>
                 </div>
             )}
 
@@ -139,25 +156,24 @@ export function Toolbar({controls}: Props) {
                 onClick={() => openLogDrawer()}
                 title="View logs (Ctrl+L)"
             >
-                <Terminal size={15}/>
+                <Terminal size={16}/>
                 {logBadge > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-error
                            text-[9px] text-white flex items-center justify-center font-bold">
-            {logBadge > 9 ? "9+" : logBadge}
-          </span>
+                        {logBadge > 9 ? "9+" : logBadge}
+                    </span>
                 )}
             </button>
 
             {/* Preferences */}
             <button className="btn-icon" onClick={openPrefs} title="Preferences (Ctrl+,)">
-                <Settings size={15}/>
+                <Settings size={16}/>
             </button>
         </header>
     );
 }
 
 // ── Type for App to pass controls down ───────────────────────────────────────
-// (imported by Toolbar.tsx, defined by the hook in App.tsx)
 
 declare global {
     interface Window {

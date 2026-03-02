@@ -99,26 +99,26 @@ export function LogDrawer() {
     }
 
     return (
-        <div className="w-80 min-w-[280px] flex-shrink-0 border-l border-border
-                    flex flex-col bg-panel animate-slide-in-right">
+        <div className="w-96 min-w-[300px] flex-shrink-0 border-l border-border
+                    flex flex-col bg-panel animate-slide-in-right relative">
 
             {/* Header */}
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border flex-shrink-0">
-        <span className="text-xs font-semibold uppercase tracking-widest text-text-secondary">
-          Logs
-        </span>
+                <span className="text-xs font-semibold uppercase tracking-widest text-text-secondary">
+                    Logs
+                </span>
                 <span className="text-xs text-text-muted ml-1">
-          {visibleLines.length} lines
-        </span>
+                    {visibleLines.length} lines
+                </span>
                 <div className="ml-auto flex gap-1">
-                    <button className="btn-icon" title="Copy all" onClick={copyAll}>
-                        <Copy size={13}/>
+                    <button className="btn-icon" title="Copy all to clipboard" onClick={copyAll}>
+                        <Copy size={14}/>
                     </button>
                     <button className="btn-icon" title="Save to file" onClick={saveToFile}>
-                        <Download size={13}/>
+                        <Download size={14}/>
                     </button>
                     <button className="btn-icon" onClick={closeLogDrawer} title="Close">
-                        <X size={13}/>
+                        <X size={14}/>
                     </button>
                 </div>
             </div>
@@ -152,16 +152,19 @@ export function LogDrawer() {
                 </div>
             </div>
 
-            {/* Level toggles */}
-            <div className="px-2 py-1.5 border-b border-border flex gap-1.5 flex-shrink-0">
+            {/* Level toggles — plain text buttons, no radio circles */}
+            <div className="px-2 py-1.5 border-b border-border flex gap-1.5 flex-shrink-0 items-center">
                 {(["info", "warning", "error", "debug"] as LogLevel[]).map((lvl) => (
                     <button
                         key={lvl}
-                        className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
+                        className={`text-[11px] px-2.5 py-0.5 rounded border transition-colors font-medium ${
                             levels.has(lvl)
-                                ? lvl === "warning" ? "bg-warning/15 border-warning/30 text-warning"
-                                    : lvl === "error" ? "bg-error/15 border-error/30 text-error"
-                                        : lvl === "debug" ? "bg-border border-border-bright text-text-muted"
+                                ? lvl === "warning"
+                                    ? "bg-warning/15 border-warning/30 text-warning"
+                                    : lvl === "error"
+                                        ? "bg-error/15 border-error/30 text-error"
+                                        : lvl === "debug"
+                                            ? "bg-border border-border-bright text-text-muted"
                                             : "bg-accent/10 border-accent/30 text-accent"
                                 : "bg-transparent border-border text-text-muted opacity-40"
                         }`}
@@ -175,14 +178,14 @@ export function LogDrawer() {
                     title="Toggle timestamps"
                     onClick={() => setShowTimestamps((v) => !v)}
                 >
-                    <span className="text-[9px] mono text-text-muted">HH:MM</span>
+                    <span className="text-[10px] mono text-text-muted">HH:MM</span>
                 </button>
             </div>
 
-            {/* Log content */}
+            {/* Log content — selectable text */}
             <div
                 ref={scrollRef}
-                className="flex-1 overflow-y-auto p-2 font-mono text-[11px] leading-relaxed"
+                className="flex-1 overflow-y-auto p-2 font-mono text-[12px] leading-relaxed log-selectable"
                 onScroll={handleScroll}
             >
                 {visibleLines.length === 0 ? (
@@ -192,13 +195,13 @@ export function LogDrawer() {
                         <div key={line.id} className={`flex gap-2 ${lineClass(line)} mb-0.5`}>
                             {showTimestamps && (
                                 <span className="text-text-muted shrink-0 select-none opacity-50">
-                  {line.timestamp.toTimeString().slice(0, 8)}
-                </span>
+                                    {line.timestamp.toTimeString().slice(0, 8)}
+                                </span>
                             )}
                             {fileFilter === "all" && (
                                 <span className="text-text-muted shrink-0 opacity-50 max-w-[60px] truncate">
-                  [{line.fileName}]
-                </span>
+                                    [{line.fileName}]
+                                </span>
                             )}
                             <span className="break-all whitespace-pre-wrap">{line.text}</span>
                         </div>
@@ -211,7 +214,7 @@ export function LogDrawer() {
             {!autoScroll && (
                 <button
                     className="absolute bottom-2 right-2 bg-card border border-border-bright
-                     rounded-full px-2 py-1 text-[10px] text-text-secondary
+                     rounded-full px-2 py-1 text-[11px] text-text-secondary
                      flex items-center gap-1 hover:bg-card-hover transition-colors"
                     onClick={() => {
                         setAutoScroll(true);

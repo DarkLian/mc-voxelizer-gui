@@ -24,6 +24,19 @@ export function useConversionQueue() {
     const childRef = useRef<Child | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const startTimeRef = useRef<number>(0);
+    // Track whether close/error already fired for the current file
+    const finishedRef = useRef<boolean>(false);
+
+    // ── Cleanup helper ───────────────────────────────────────────────────────
+
+    function cleanup() {
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        childRef.current = null;
+        finishedRef.current = false;
+    }
 
     // ── Start a single conversion ────────────────────────────────────────────
 
@@ -61,6 +74,7 @@ export function useConversionQueue() {
         setStatus(fileId, "running");
         setProgress(fileId, 0);
         startTimeRef.current = Date.now();
+        finishedRef.current = false;
 
         // Elapsed timer
         timerRef.current = setInterval(() => {
@@ -72,6 +86,32 @@ export function useConversionQueue() {
             level: "info",
             text: `> mc_voxelizer ${args.join(" ")}`,
         });
+
+        // Helper: respond to the "Press Enter to exit" prompt
+        async function replyEnter() {
+            if (childRef.current) {
+                try {
+                    await childRef.current.write("\n");
+                } catch { /* already exited */
+                }
+            }
+        }
+
+        // Helper: finish once (guards against close + error both firing)
+        function finish(success: boolean, outputJson?: string, outputPng?: string) {
+            if (finishedRef.current) return;
+            finishedRef.current = true;
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+            const elapsed = Date.now() - startTimeRef.current;
+            useAppStore.getState().setElapsed(fileId, elapsed);
+            finishFile(fileId, success, outputJson, outputPng);
+            childRef.current = null;
+            const nextId = advanceQueue();
+            if (nextId) runFile(nextId);
+        }
 
         try {
             const command = Command.sidecar(SIDECAR_NAME, args);
@@ -89,30 +129,27 @@ export function useConversionQueue() {
                 if (p !== null) useAppStore.getState().setProgress(fileId, p);
 
                 // The C++ binary ends with "Press Enter to exit..." — reply with \n
-                if (isPausePrompt(line) && childRef.current) {
-                    try {
-                        await childRef.current.write("\n");
-                    } catch {
-                        // ignore — process may have already exited
-                    }
+                if (isPausePrompt(line)) {
+                    await replyEnter();
                 }
             });
 
-            // stderr handler (warnings / errors from the binary)
-            command.stderr.on("data", (line: string) => {
+            // stderr handler — also check for pause prompt (binary may print it to stderr on error paths)
+            command.stderr.on("data", async (line: string) => {
                 useAppStore.getState().addLogLine(fileId, {
                     timestamp: new Date(),
                     level: "warning",
                     text: line,
                 });
+
+                // Handle pause prompt arriving on stderr (happens on some error paths)
+                if (isPausePrompt(line)) {
+                    await replyEnter();
+                }
             });
 
             // Process exit handler
             command.on("close", (data: { code: number | null }) => {
-                if (timerRef.current) clearInterval(timerRef.current);
-                const elapsed = Date.now() - startTimeRef.current;
-                useAppStore.getState().setElapsed(fileId, elapsed);
-
                 const success = data.code === 0;
                 const outputJson = success
                     ? `${outDir}/${file.settings.modelName}.json`
@@ -120,26 +157,16 @@ export function useConversionQueue() {
                 const outputPng = success
                     ? `${outDir}/${file.settings.modelName}.png`
                     : undefined;
-
-                finishFile(fileId, success, outputJson, outputPng);
-                childRef.current = null;
-
-                // Advance to next file in queue
-                const nextId = advanceQueue();
-                if (nextId) runFile(nextId);
+                finish(success, outputJson, outputPng);
             });
 
             command.on("error", (err: string) => {
-                if (timerRef.current) clearInterval(timerRef.current);
                 useAppStore.getState().addLogLine(fileId, {
                     timestamp: new Date(),
                     level: "error",
                     text: `Process error: ${err}`,
                 });
-                finishFile(fileId, false);
-                childRef.current = null;
-                const nextId = advanceQueue();
-                if (nextId) runFile(nextId);
+                finish(false);
             });
 
             const child = await command.spawn();
@@ -147,7 +174,10 @@ export function useConversionQueue() {
             setPid(fileId, child.pid);
 
         } catch (err) {
-            if (timerRef.current) clearInterval(timerRef.current);
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
             addLogLine(fileId, {
                 timestamp: new Date(),
                 level: "error",
@@ -156,21 +186,19 @@ export function useConversionQueue() {
             finishFile(fileId, false);
             childRef.current = null;
             const nextId = advanceQueue();
-            if (nextId) runFile(nextId);
+            if (nextId) await runFile(nextId);
         }
     }, []);
 
     // ── Watch the queue and auto-start ──────────────────────────────────────
 
     useEffect(() => {
-        const unsub = useAppStore.subscribe((state) => {
-            // If nothing is active but queue has items, advance
+        return useAppStore.subscribe((state) => {
             if (state.activeId === null && state.conversionQueue.length > 0) {
                 const nextId = state.advanceQueue();
                 if (nextId) runFile(nextId);
             }
         });
-        return unsub;
     }, [runFile]);
 
     // ── Pause / resume (Windows: suspend/resume the process) ────────────────
@@ -209,13 +237,32 @@ export function useConversionQueue() {
         if (childRef.current) {
             try {
                 await childRef.current.kill();
-            } catch {
-                // ignore
+            } catch { /* ignore */
             }
             childRef.current = null;
         }
-        if (timerRef.current) clearInterval(timerRef.current);
+        if (timerRef.current) {
+            clearInterval(timerRef.current);
+            timerRef.current = null;
+        }
+        finishedRef.current = false;
     }, []);
 
-    return {killActive, pauseActive, resumeActive};
+    // ── Force-reset stuck conversion ─────────────────────────────────────────
+    // Used when the binary hangs and close/error never fires (e.g. permission error
+    // where the process is blocked waiting for input).
+
+    const forceReset = useCallback(async () => {
+        // Kill child if still alive
+        if (childRef.current) {
+            try {
+                await childRef.current.kill();
+            } catch { /* ignore */
+            }
+        }
+        cleanup();
+        useAppStore.getState().forceResetActive();
+    }, []);
+
+    return {killActive, pauseActive, resumeActive, forceReset};
 }

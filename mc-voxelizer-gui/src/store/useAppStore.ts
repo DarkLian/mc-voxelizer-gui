@@ -1,7 +1,7 @@
 import {create} from "zustand";
 import {persist} from "zustand/middleware";
 import type {FileEntry, FileSettings, FileStatus, LogLine, Preferences,} from "@/types";
-import {DEFAULT_PREFERENCES, QUALITY_RESOLUTION} from "@/types";
+import {DEFAULT_PREFERENCES} from "@/types";
 import {stemFromPath} from "@/utils/pathUtils";
 
 // ── Helper ────────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ interface AppStore {
     preferences: Preferences;
 
     // ── File queue actions ─────────────────────────────────────────────────────
-    addFiles: (paths: string[]) => string[]; // returns added IDs
+    addFiles: (paths: string[]) => string[];
     removeFiles: (ids: string[]) => void;
     clearDone: () => void;
     reorderFile: (id: string, toIndex: number) => void;
@@ -75,6 +75,7 @@ interface AppStore {
     setStatus: (id: string, status: FileStatus) => void;
     setPid: (id: string, pid: number | null) => void;
     setProgress: (id: string, progress: number) => void;
+    setElapsed: (id: string, ms: number) => void;
     addLogLine: (id: string, line: Omit<LogLine, "id">) => void;
     finishFile: (
         id: string,
@@ -82,16 +83,19 @@ interface AppStore {
         outputJson?: string,
         outputPng?: string
     ) => void;
-    setElapsed: (id: string, ms: number) => void;
-    advanceQueue: () => string | null; // returns next file ID or null
+    advanceQueue: () => string | null;
 
-    // ── Log drawer actions ─────────────────────────────────────────────────────
+    /** Force-clears a stuck activeId and marks the file as error. Use when the
+     *  child process dies without firing close/error (e.g. permission failures). */
+    forceResetActive: () => void;
+
+    // ── Log drawer ─────────────────────────────────────────────────────────────
     openLogDrawer: (fileId?: string) => void;
     closeLogDrawer: () => void;
     clearLogBadge: () => void;
     incrementLogBadge: () => void;
 
-    // ── Preferences actions ────────────────────────────────────────────────────
+    // ── Preferences ────────────────────────────────────────────────────────────
     openPrefs: () => void;
     closePrefs: () => void;
     updatePreferences: (patch: Partial<Preferences>) => void;
@@ -116,19 +120,17 @@ export const useAppStore = create<AppStore>()(
             // ── File queue ──────────────────────────────────────────────────────────
 
             addFiles: (paths) => {
-                const {files, preferences} = get();
-                const existing = new Set(files.map((f) => f.sourcePath));
-                const added: string[] = [];
-
+                const prefs = get().preferences;
+                const existingPaths = new Set(get().files.map((f) => f.sourcePath));
                 const newFiles: FileEntry[] = [];
+
                 for (const p of paths) {
-                    if (existing.has(p)) continue;
-                    const id = uid();
+                    if (existingPaths.has(p)) continue;
                     newFiles.push({
-                        id,
+                        id: uid(),
                         sourcePath: p,
                         status: "idle",
-                        settings: makeDefaultSettings(p, preferences),
+                        settings: makeDefaultSettings(p, prefs),
                         progress: 0,
                         elapsedMs: 0,
                         pid: null,
@@ -137,19 +139,13 @@ export const useAppStore = create<AppStore>()(
                         outputJson: null,
                         outputPng: null,
                     });
-                    added.push(id);
+                    existingPaths.add(p);
                 }
 
-                set((s) => ({
-                    files: [...s.files, ...newFiles],
-                    // Auto-select first added file if nothing is selected
-                    selectedIds:
-                        s.selectedIds.size === 0 && added.length > 0
-                            ? new Set([added[0]])
-                            : s.selectedIds,
-                }));
-
-                return added;
+                if (newFiles.length > 0) {
+                    set((s) => ({files: [...s.files, ...newFiles]}));
+                }
+                return newFiles.map((f) => f.id);
             },
 
             removeFiles: (ids) => {
@@ -158,6 +154,7 @@ export const useAppStore = create<AppStore>()(
                     files: s.files.filter((f) => !idSet.has(f.id)),
                     conversionQueue: s.conversionQueue.filter((id) => !idSet.has(id)),
                     selectedIds: new Set([...s.selectedIds].filter((id) => !idSet.has(id))),
+                    activeId: idSet.has(s.activeId ?? "") ? null : s.activeId,
                 }));
             },
 
@@ -167,23 +164,25 @@ export const useAppStore = create<AppStore>()(
                         (f) => f.status !== "done" && f.status !== "cancelled"
                     ),
                     selectedIds: new Set(
-                        [...s.selectedIds].filter((id) => {
-                            const f = s.files.find((x) => x.id === id);
-                            return f && f.status !== "done" && f.status !== "cancelled";
-                        })
+                        [...s.selectedIds].filter((id) =>
+                            s.files.find(
+                                (f) =>
+                                    f.id === id &&
+                                    f.status !== "done" &&
+                                    f.status !== "cancelled"
+                            )
+                        )
                     ),
                 }));
             },
 
             reorderFile: (id, toIndex) => {
-                set((s) => {
-                    const idx = s.files.findIndex((f) => f.id === id);
-                    if (idx === -1) return {};
-                    const arr = [...s.files];
-                    const [item] = arr.splice(idx, 1);
-                    arr.splice(toIndex, 0, item);
-                    return {files: arr};
-                });
+                const files = [...get().files];
+                const from = files.findIndex((f) => f.id === id);
+                if (from === -1) return;
+                const [item] = files.splice(from, 1);
+                files.splice(toIndex, 0, item);
+                set({files});
             },
 
             // ── Settings ────────────────────────────────────────────────────────────
@@ -210,82 +209,84 @@ export const useAppStore = create<AppStore>()(
             // ── Selection ───────────────────────────────────────────────────────────
 
             selectFile: (id, mode) => {
-                set((s) => {
-                    if (mode === "single") return {selectedIds: new Set([id])};
-                    if (mode === "add") {
-                        const next = new Set(s.selectedIds);
-                        if (next.has(id)) next.delete(id);
-                        else next.add(id);
-                        return {selectedIds: next};
-                    }
-                    // Range: select from last selected to clicked
-                    const ids = s.files.map((f) => f.id);
-                    const last = [...s.selectedIds].pop();
-                    const a = last ? ids.indexOf(last) : 0;
-                    const b = ids.indexOf(id);
-                    const lo = Math.min(a, b);
-                    const hi = Math.max(a, b);
-                    return {selectedIds: new Set(ids.slice(lo, hi + 1))};
-                });
+                const {files, selectedIds} = get();
+                if (mode === "single") {
+                    set({selectedIds: new Set([id])});
+                } else if (mode === "add") {
+                    const next = new Set(selectedIds);
+                    if (next.has(id)) next.delete(id);
+                    else next.add(id);
+                    set({selectedIds: next});
+                } else if (mode === "range") {
+                    const ids = files.map((f) => f.id);
+                    const anchor = [...selectedIds][0] ?? ids[0];
+                    const anchorIdx = ids.indexOf(anchor);
+                    const targetIdx = ids.indexOf(id);
+                    const [lo, hi] = [
+                        Math.min(anchorIdx, targetIdx),
+                        Math.max(anchorIdx, targetIdx),
+                    ];
+                    set({selectedIds: new Set(ids.slice(lo, hi + 1))});
+                }
             },
 
             selectAll: () => {
                 set((s) => ({selectedIds: new Set(s.files.map((f) => f.id))}));
             },
 
-            deselectAll: () => {
-                set({selectedIds: new Set()});
-            },
+            deselectAll: () => set({selectedIds: new Set()}),
 
             // ── Conversion queue ────────────────────────────────────────────────────
 
             enqueueSelected: () => {
-                const {files, selectedIds} = get();
-                const toQueue = files
-                    .filter(
-                        (f) =>
-                            selectedIds.has(f.id) &&
-                            (f.status === "idle" ||
-                                f.status === "error" ||
-                                f.status === "cancelled")
-                    )
+                const {selectedIds, files} = get();
+                const ids = files
+                    .filter((f) => selectedIds.has(f.id) && f.status === "idle")
                     .map((f) => f.id);
-                get().enqueueIds(toQueue);
+                if (ids.length === 0) return;
+                const idSet = new Set(ids);
+                set((s) => ({
+                    conversionQueue: [
+                        ...s.conversionQueue,
+                        ...ids.filter((id) => !s.conversionQueue.includes(id)),
+                    ],
+                    files: s.files.map((f) =>
+                        idSet.has(f.id) ? {...f, status: "queued" as FileStatus} : f
+                    ),
+                }));
             },
 
             enqueueIds: (ids) => {
-                const idSet = new Set(ids);
-                set((s) => {
-                    const alreadyQueued = new Set(s.conversionQueue);
-                    const toAdd = ids.filter((id) => !alreadyQueued.has(id));
-                    return {
-                        files: s.files.map((f) =>
-                            idSet.has(f.id) &&
-                            (f.status === "idle" ||
-                                f.status === "error" ||
-                                f.status === "cancelled")
-                                ? {
-                                    ...f,
-                                    status: "queued" as FileStatus,
-                                    progress: 0,
-                                    log: [],
-                                    errorSummary: null,
-                                    outputJson: null,
-                                    outputPng: null,
-                                }
-                                : f
-                        ),
-                        conversionQueue: [...s.conversionQueue, ...toAdd],
-                    };
+                const {files} = get();
+                const validIds = ids.filter((id) => {
+                    const f = files.find((x) => x.id === id);
+                    return f && (f.status === "idle" || f.status === "error" || f.status === "cancelled");
                 });
+                if (validIds.length === 0) return;
+                const idSet = new Set(validIds);
+                set((s) => ({
+                    conversionQueue: [
+                        ...s.conversionQueue,
+                        ...validIds.filter((id) => !s.conversionQueue.includes(id)),
+                    ],
+                    files: s.files.map((f) =>
+                        idSet.has(f.id) ? {
+                            ...f,
+                            status: "queued" as FileStatus,
+                            log: [],
+                            progress: 0,
+                            errorSummary: null
+                        } : f
+                    ),
+                }));
             },
 
             cancelAll: () => {
                 set((s) => ({
                     conversionQueue: [],
-                    activeId: s.activeId, // leave active — caller kills the process
+                    activeId: null,
                     files: s.files.map((f) =>
-                        f.status === "queued"
+                        f.status === "queued" || f.status === "running"
                             ? {...f, status: "cancelled" as FileStatus}
                             : f
                     ),
@@ -370,11 +371,33 @@ export const useAppStore = create<AppStore>()(
 
             advanceQueue: () => {
                 const {conversionQueue, activeId} = get();
-                if (activeId !== null) return null; // already running
+                if (activeId !== null) return null;
                 if (conversionQueue.length === 0) return null;
                 const [next, ...rest] = conversionQueue;
                 set({conversionQueue: rest, activeId: next});
                 return next;
+            },
+
+            forceResetActive: () => {
+                const {activeId, files} = get();
+                if (!activeId) return;
+                const file = files.find((f) => f.id === activeId);
+                set((s) => ({
+                    activeId: null,
+                    conversionQueue: [],
+                    files: s.files.map((f) =>
+                        f.id === activeId
+                            ? {
+                                ...f,
+                                status: "error" as FileStatus,
+                                pid: null,
+                                errorSummary: file?.errorSummary ?? "Conversion interrupted",
+                            }
+                            : f.status === "queued"
+                                ? {...f, status: "idle" as FileStatus}
+                                : f
+                    ),
+                }));
             },
 
             // ── Log drawer ──────────────────────────────────────────────────────────
@@ -407,7 +430,6 @@ export const useAppStore = create<AppStore>()(
         }),
         {
             name: "mc-voxelizer-prefs",
-            // Only persist preferences — file queue is session-only
             partialize: (s) => ({preferences: s.preferences}),
         }
     )
@@ -421,16 +443,28 @@ export const selectSelectedFiles = (s: AppStore) =>
 export const selectRunningFile = (s: AppStore) =>
     s.files.find((f) => f.id === s.activeId) ?? null;
 
-export const selectQueueStats = (s: AppStore) => ({
-    total: s.files.length,
-    done: s.files.filter((f) => f.status === "done").length,
-    running: s.files.filter((f) => f.status === "running").length,
-    queued: s.files.filter((f) => f.status === "queued").length,
-    error: s.files.filter((f) => f.status === "error").length,
-    idle: s.files.filter((f) => f.status === "idle").length,
-});
+export interface QueueStats {
+    total: number;
+    idle: number;
+    queued: number;
+    running: number;
+    paused: number;
+    done: number;
+    error: number;
+    cancelled: number;
+}
 
-export const selectEstimatedAtlasSize = (quality: number, density: number) => {
-    const gridRes = QUALITY_RESOLUTION[quality] ?? 32;
-    return gridRes * (density || 8);
+export const selectQueueStats = (s: AppStore): QueueStats => {
+    const stats: QueueStats = {
+        total: s.files.length,
+        idle: 0,
+        queued: 0,
+        running: 0,
+        paused: 0,
+        done: 0,
+        error: 0,
+        cancelled: 0,
+    };
+    for (const f of s.files) stats[f.status]++;
+    return stats;
 };

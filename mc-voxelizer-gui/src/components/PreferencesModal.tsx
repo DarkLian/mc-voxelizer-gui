@@ -2,14 +2,14 @@ import {useState} from "react";
 import {FolderOpen, X} from "lucide-react";
 import {open} from "@tauri-apps/plugin-dialog";
 import {useAppStore} from "@/store/useAppStore";
-import {QUALITY_LABELS} from "@/types";
+import {DEFAULT_PREFERENCES, QUALITY_LABELS} from "@/types";
 import {isValidModId} from "@/utils/pathUtils";
 
 export function PreferencesModal() {
     const prefs = useAppStore((s) => s.preferences);
     const {closePrefs, updatePreferences, resetPreferences} = useAppStore.getState();
 
-    // Local draft — only committed on Close
+    // Local draft — only committed on Save
     const [draft, setDraft] = useState({...prefs});
 
     function save() {
@@ -34,6 +34,8 @@ export function PreferencesModal() {
         if (file && typeof file === "string") patch({binaryPath: file});
     }
 
+    // Density options: 0 = auto, then 1–64
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in">
             <div className="bg-panel border border-border-bright rounded-xl shadow-2xl
@@ -55,8 +57,12 @@ export function PreferencesModal() {
 
                         <Field label="Default Output Directory">
                             <div className="flex gap-2">
-                                <input className="field flex-1 text-xs" value={draft.defaultOutputDir}
-                                       onChange={(e) => patch({defaultOutputDir: e.target.value})}/>
+                                <input
+                                    className="field flex-1 text-xs"
+                                    value={draft.defaultOutputDir}
+                                    onChange={(e) => patch({defaultOutputDir: e.target.value})}
+                                    placeholder="e.g. C:\Users\You\Desktop"
+                                />
                                 <button className="btn-ghost px-2" onClick={browseDefault}>
                                     <FolderOpen size={14}/>
                                 </button>
@@ -67,13 +73,19 @@ export function PreferencesModal() {
                             <div className="flex flex-col gap-1.5">
                                 {(["fixed", "alongside"] as const).map((m) => (
                                     <label key={m} className="flex items-center gap-2 cursor-pointer select-none">
-                                        <input type="radio" name="outputMode" value={m}
-                                               checked={draft.defaultOutputMode === m}
-                                               onChange={() => patch({defaultOutputMode: m})}
-                                               className="accent-accent"/>
+                                        <input
+                                            type="radio"
+                                            name="outputMode"
+                                            value={m}
+                                            checked={draft.defaultOutputMode === m}
+                                            onChange={() => patch({defaultOutputMode: m})}
+                                            className="accent-accent"
+                                        />
                                         <span className="text-sm text-text-secondary">
-                      {m === "fixed" ? "Use the fixed directory above" : "Place output next to the source file"}
-                    </span>
+                                            {m === "fixed"
+                                                ? "Use the fixed directory above"
+                                                : "Place output next to the source file"}
+                                        </span>
                                     </label>
                                 ))}
                             </div>
@@ -83,33 +95,44 @@ export function PreferencesModal() {
                             <input
                                 className={`field mono ${draft.defaultModId && !isValidModId(draft.defaultModId) ? "border-error/60" : ""}`}
                                 value={draft.defaultModId}
+                                placeholder="mymod"
                                 onChange={(e) => patch({defaultModId: e.target.value})}
                             />
                         </Field>
 
                         <Field label="Default Quality">
-                            <select className="field" value={draft.defaultQuality}
-                                    onChange={(e) => patch({defaultQuality: parseInt(e.target.value)})}>
+                            <select
+                                className="field"
+                                value={draft.defaultQuality}
+                                onChange={(e) => patch({defaultQuality: parseInt(e.target.value)})}
+                            >
                                 {[1, 2, 3, 4, 5, 6, 7].map((q) => (
                                     <option key={q} value={q}>Q{q} — {QUALITY_LABELS[q]}</option>
                                 ))}
                             </select>
                         </Field>
 
-                        <Field label="Default Density">
-                            <select className="field" value={draft.defaultDensity}
-                                    onChange={(e) => patch({defaultDensity: parseInt(e.target.value)})}>
-                                <option value={0}>Auto (recommended)</option>
-                                {[1, 2, 4, 8, 16, 32].map((d) => (
-                                    <option key={d} value={d}>{d} px/voxel</option>
+                        <Field label="Default Density (pixels per voxel face)">
+                            <select
+                                className="field"
+                                value={draft.defaultDensity}
+                                onChange={(e) => patch({defaultDensity: parseInt(e.target.value)})}
+                            >
+                                <option value={0}>0 — Auto (recommended)</option>
+                                {Array.from({length: 64}, (_, i) => i + 1).map((d) => (
+                                    <option key={d} value={d}>{d}px</option>
                                 ))}
                             </select>
                         </Field>
 
                         <Field label="">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <input type="checkbox" className="checkbox" checked={draft.defaultSolidFill}
-                                       onChange={(e) => patch({defaultSolidFill: e.target.checked})}/>
+                                <input
+                                    type="checkbox"
+                                    checked={draft.defaultSolidFill}
+                                    onChange={(e) => patch({defaultSolidFill: e.target.checked})}
+                                    className="accent-accent"
+                                />
                                 <span className="text-sm text-text-secondary">Solid fill by default</span>
                             </label>
                         </Field>
@@ -117,34 +140,49 @@ export function PreferencesModal() {
 
                     {/* NOTIFICATIONS */}
                     <Section label="Notifications">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" className="checkbox" checked={draft.showToastOnComplete}
-                                   onChange={(e) => patch({showToastOnComplete: e.target.checked})}/>
-                            <span className="text-sm text-text-secondary">Show toast on completion</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                            <input type="checkbox" className="checkbox" checked={draft.playSoundOnComplete}
-                                   onChange={(e) => patch({playSoundOnComplete: e.target.checked})}/>
-                            <span className="text-sm text-text-secondary">Play sound on completion</span>
-                        </label>
+                        <Field label="">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={draft.showToastOnComplete}
+                                    onChange={(e) => patch({showToastOnComplete: e.target.checked})}
+                                    className="accent-accent"
+                                />
+                                <span className="text-sm text-text-secondary">Show toast on file complete</span>
+                            </label>
+                        </Field>
+
+                        <Field label="">
+                            <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input
+                                    type="checkbox"
+                                    checked={draft.playSoundOnComplete}
+                                    onChange={(e) => patch({playSoundOnComplete: e.target.checked})}
+                                    className="accent-accent"
+                                />
+                                <span className="text-sm text-text-secondary">Play sound on complete</span>
+                            </label>
+                        </Field>
                     </Section>
 
                     {/* ADVANCED */}
                     <Section label="Advanced">
-                        <Field label="Binary Path (leave blank for auto-detect)">
+                        <Field label="Custom Binary Path">
                             <div className="flex gap-2">
                                 <input
                                     className="field flex-1 text-xs"
                                     value={draft.binaryPath ?? ""}
-                                    placeholder="Auto-detect bundled binary"
-                                    onChange={(e) => patch({binaryPath: e.target.value || null})}
+                                    placeholder="Leave blank for bundled binary"
+                                    onChange={(e) =>
+                                        patch({binaryPath: e.target.value || null})
+                                    }
                                 />
                                 <button className="btn-ghost px-2" onClick={browseBinary}>
                                     <FolderOpen size={14}/>
                                 </button>
                             </div>
                             <p className="text-[11px] text-text-muted mt-1">
-                                Only needed if you're running the GUI without the bundled binary.
+                                Override the bundled mc_voxelizer executable with a custom build.
                             </p>
                         </Field>
                     </Section>
@@ -153,11 +191,14 @@ export function PreferencesModal() {
 
                 {/* Footer */}
                 <div className="flex items-center gap-2 px-5 py-3 border-t border-border flex-shrink-0">
-                    <button className="btn-ghost text-xs text-error border-error/20 hover:bg-error/10"
-                            onClick={() => {
-                                resetPreferences();
-                                setDraft({...prefs});
-                            }}>
+                    <button
+                        className="btn-ghost text-xs text-error border-error/20 hover:bg-error/10"
+                        onClick={() => {
+                            resetPreferences();
+                            // Fix: use DEFAULT_PREFERENCES directly, not the stale `prefs` snapshot
+                            setDraft({...DEFAULT_PREFERENCES});
+                        }}
+                    >
                         Reset to Defaults
                     </button>
                     <div className="flex-1"/>

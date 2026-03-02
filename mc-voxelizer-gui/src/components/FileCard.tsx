@@ -1,18 +1,16 @@
 import {useRef, useState} from "react";
 import {
-  AlertCircle,
-  CheckCircle2,
-  Circle,
-  Clock,
-  Copy,
-  FileSearch,
-  FolderOpen,
-  Loader2,
-  MoreVertical,
-  PauseCircle,
-  Terminal,
-  Trash2,
-  XCircle,
+    AlertCircle,
+    CheckCircle2,
+    Clock,
+    FileSearch,
+    FolderOpen,
+    Loader2,
+    MoreVertical,
+    PauseCircle,
+    Terminal,
+    Trash2,
+    XCircle,
 } from "lucide-react";
 import type {FileEntry} from "@/types";
 import {shortenPath} from "@/utils/pathUtils";
@@ -25,13 +23,13 @@ interface Props {
 }
 
 const STATUS_ICON = {
-    idle: <Circle size={10} className="text-text-muted"/>,
-    queued: <Clock size={10} className="text-queued"/>,
-    running: <Loader2 size={10} className="text-running animate-spin"/>,
-    paused: <PauseCircle size={10} className="text-paused"/>,
-    done: <CheckCircle2 size={10} className="text-done"/>,
-    error: <AlertCircle size={10} className="text-error"/>,
-    cancelled: <XCircle size={10} className="text-cancelled"/>,
+    idle: <span className="w-2.5 h-2.5 rounded-full border border-text-muted/40 inline-block"/>,
+    queued: <Clock size={11} className="text-queued"/>,
+    running: <Loader2 size={11} className="text-running animate-spin"/>,
+    paused: <PauseCircle size={11} className="text-paused"/>,
+    done: <CheckCircle2 size={11} className="text-done"/>,
+    error: <AlertCircle size={11} className="text-error"/>,
+    cancelled: <XCircle size={11} className="text-cancelled"/>,
 } as const;
 
 const STATUS_LABEL = {
@@ -55,7 +53,7 @@ function formatElapsed(ms: number): string {
 export function FileCard({file, isSelected, onClick}: Props) {
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
-    const {removeFiles, openLogDrawer, addFiles} = useAppStore.getState();
+    const {removeFiles, openLogDrawer} = useAppStore.getState();
 
     const isActive = file.status === "running" || file.status === "paused";
     const name = file.settings.modelName || file.sourcePath.split(/[\\/]/).pop();
@@ -77,11 +75,6 @@ export function FileCard({file, isSelected, onClick}: Props) {
         setMenuOpen(false);
     }
 
-    function handleDuplicate() {
-        addFiles([file.sourcePath]);
-        setMenuOpen(false);
-    }
-
     function handleRemove() {
         removeFiles([file.id]);
         setMenuOpen(false);
@@ -92,136 +85,136 @@ export function FileCard({file, isSelected, onClick}: Props) {
             className={`relative flex items-stretch rounded-md cursor-pointer
         border transition-all duration-100 group
         ${isSelected
-                ? "border-accent/40 bg-accent-dim"
+                ? "border-accent/50 bg-accent-dim"
                 : "border-border bg-card hover:bg-card-hover hover:border-border-bright"
             }`}
             onClick={onClick}
         >
             {/* Status accent left bar */}
-            <div className={`w-0.5 rounded-l-md flex-shrink-0 status-bar-${file.status}`}/>
+            <div className={`w-1 rounded-l-md flex-shrink-0 status-bar-${file.status}`}/>
+
+            {/* Selection circle */}
+            <div className="flex items-center pl-2.5 pr-1 flex-shrink-0">
+                <div className={`file-select-circle ${isSelected ? "selected" : ""}`}/>
+            </div>
 
             {/* Main content */}
-            <div className="flex-1 p-2.5 min-w-0">
-                {/* Row 1: name + status */}
+            <div className="flex-1 p-2.5 min-w-0 pl-1">
+                {/* Row 1: name + status icon */}
                 <div className="flex items-center gap-1.5 mb-0.5">
                     {STATUS_ICON[file.status]}
                     <span className="text-text-primary text-sm font-medium truncate flex-1">
-            {name}
-          </span>
-                    <span className={`text-[10px] shrink-0 ${
+                        {name}
+                    </span>
+                    <span className={`text-[11px] shrink-0 ${
                         file.status === "error" ? "text-error" :
                             file.status === "done" ? "text-done" :
                                 file.status === "running" ? "text-running" :
                                     "text-text-muted"
                     }`}>
-            {STATUS_LABEL[file.status]}
-          </span>
+                        {STATUS_LABEL[file.status]}
+                    </span>
                 </div>
 
                 {/* Row 2: source path */}
                 <p
-                    className="text-[11px] text-text-muted truncate mb-1"
+                    className="text-[12px] text-text-muted truncate mb-1"
                     title={file.sourcePath}
                 >
                     {shortenPath(file.sourcePath, 38)}
                 </p>
 
                 {/* Row 3: settings summary */}
-                <p className="text-[11px] text-text-muted mono">{settingsSummary}</p>
+                <p className="text-[12px] text-text-muted mono">{settingsSummary}</p>
 
                 {/* Row 4: progress bar (active only) */}
                 {isActive && (
                     <div className="mt-2">
                         <div className="progress-bar">
                             <div
-                                className={`progress-fill ${file.status === "paused" ? "paused" : ""}`}
+                                className={`progress-fill ${file.status === "paused"
+                                    ? "progress-fill-paused"
+                                    : "progress-fill-running"
+                                }`}
                                 style={{width: `${file.progress}%`}}
                             />
                         </div>
-                        <div className="flex justify-between mt-1">
-                            <span className="text-[10px] text-text-muted mono">{file.progress}%</span>
-                            <span className="text-[10px] text-text-muted mono">
-                {formatElapsed(file.elapsedMs)}
-              </span>
+                        <div className="flex justify-between mt-0.5">
+                            <span className="text-[11px] text-text-muted">{file.progress}%</span>
+                            {file.elapsedMs > 0 && (
+                                <span className="text-[11px] text-text-muted">{formatElapsed(file.elapsedMs)}</span>
+                            )}
                         </div>
                     </div>
                 )}
 
-                {/* Row: done elapsed */}
-                {file.status === "done" && file.elapsedMs > 0 && (
-                    <p className="text-[10px] text-done mt-1 mono">
-                        ✓ {formatElapsed(file.elapsedMs)}
-                    </p>
-                )}
-
-                {/* Row: error summary */}
+                {/* Error summary */}
                 {file.status === "error" && file.errorSummary && (
-                    <p
-                        className="text-[10px] text-error mt-1 truncate"
-                        title={file.errorSummary}
-                    >
+                    <p className="text-[11px] text-error mt-1 truncate" title={file.errorSummary}>
                         {file.errorSummary}
                     </p>
                 )}
             </div>
 
-            {/* Overflow menu button */}
-            <div className="flex flex-col justify-start pt-2 pr-1.5">
+            {/* Context menu button */}
+            <div className="flex items-start pt-2 pr-1.5 flex-shrink-0">
                 <button
-                    className="btn-icon p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="btn-icon opacity-0 group-hover:opacity-100 transition-opacity p-1"
                     onClick={(e) => {
                         e.stopPropagation();
                         setMenuOpen((v) => !v);
                     }}
-                    title="More options"
                 >
                     <MoreVertical size={13}/>
                 </button>
-            </div>
 
-            {/* Dropdown menu */}
-            {menuOpen && (
-                <>
-                    <div
-                        className="fixed inset-0 z-40"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setMenuOpen(false);
-                        }}
-                    />
-                    <div
-                        ref={menuRef}
-                        className="absolute right-1 top-8 z-50 bg-panel border border-border-bright
-                       rounded-md shadow-xl min-w-[170px] py-1 animate-fade-in"
-                        onClick={(e) => e.stopPropagation()}
-                    >
-                        <MenuItem icon={<Terminal size={13}/>} label="View Log"
-                                  onClick={() => {
-                                      openLogDrawer(file.id);
-                                      setMenuOpen(false);
-                                  }}/>
-
-                        {file.status === "done" && (
-                            <MenuItem icon={<FolderOpen size={13}/>} label="Open Output Folder"
-                                      onClick={handleOpenOutput}/>
-                        )}
-
-                        <MenuItem icon={<FileSearch size={13}/>} label="Reveal Source File"
-                                  onClick={handleRevealSource}/>
-
-                        <MenuItem icon={<Copy size={13}/>} label="Duplicate Entry"
-                                  onClick={handleDuplicate}/>
-
-                        <div className="border-t border-border my-1"/>
-
-                        <MenuItem icon={<Trash2 size={13}/>} label="Remove from Queue"
-                                  onClick={handleRemove}
-                                  danger
-                                  disabled={file.status === "running"}
+                {menuOpen && (
+                    <>
+                        <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setMenuOpen(false)}
                         />
-                    </div>
-                </>
-            )}
+                        <div
+                            ref={menuRef}
+                            className="absolute right-1 top-8 z-20 bg-panel border border-border-bright
+                                rounded-lg shadow-2xl py-1 min-w-[170px] animate-fade-in"
+                        >
+                            <MenuItem
+                                icon={<Terminal size={13}/>}
+                                label="View Logs"
+                                onClick={() => {
+                                    openLogDrawer(file.id);
+                                    setMenuOpen(false);
+                                }}
+                            />
+
+                            {file.status === "done" && (
+                                <MenuItem
+                                    icon={<FolderOpen size={13}/>}
+                                    label="Open Output Folder"
+                                    onClick={handleOpenOutput}
+                                />
+                            )}
+
+                            <MenuItem
+                                icon={<FileSearch size={13}/>}
+                                label="Reveal Source File"
+                                onClick={handleRevealSource}
+                            />
+
+                            <div className="border-t border-border my-1"/>
+
+                            <MenuItem
+                                icon={<Trash2 size={13}/>}
+                                label="Remove from Queue"
+                                onClick={handleRemove}
+                                danger
+                                disabled={file.status === "running"}
+                            />
+                        </div>
+                    </>
+                )}
+            </div>
         </div>
     );
 }

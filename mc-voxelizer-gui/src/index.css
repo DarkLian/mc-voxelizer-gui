@@ -18,7 +18,7 @@ body {
     background: #0A0A0F;
     color: #E2E2E8;
     font-family: "Outfit", system-ui, sans-serif;
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.5;
     overflow: hidden;
     user-select: none;
@@ -62,20 +62,46 @@ body {
 
 .titlebar {
     -webkit-app-region: drag;
-    height: 32px;
+    height: 36px;
     background: #0A0A0F;
     border-bottom: 1px solid #1E1E2A;
     display: flex;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 14px;
     flex-shrink: 0;
+    gap: 8px;
 }
+
+/* ── Titlebar window buttons ───────────────────────────────────────────────── */
 
 .titlebar-buttons {
     -webkit-app-region: no-drag;
     display: flex;
-    gap: 6px;
     margin-left: auto;
+}
+
+.titlebar-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 36px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: #9999AA;
+    transition: background 0.1s, color 0.1s;
+    flex-shrink: 0;
+}
+
+.titlebar-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #E2E2E8;
+}
+
+.titlebar-btn.titlebar-close:hover {
+    background: #c42b1c;
+    color: #fff;
 }
 
 /* ── Drag & drop overlay ───────────────────────────────────────────────────── */
@@ -91,133 +117,163 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    animation: fadeIn 0.15s ease-out;
+    animation: fadeIn 0.15s ease;
 }
 
-/* ── Status accent bars on file cards ─────────────────────────────────────── */
+/* ── Top progress bar ──────────────────────────────────────────────────────── */
+
+.top-progress-bar {
+    height: 3px;
+    background: #1A1A26;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+
+.top-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00C9A7, #00A8E8);
+    transition: width 0.4s ease;
+    border-radius: 0 2px 2px 0;
+}
+
+/* ── File Card selection circle ────────────────────────────────────────────── */
+
+.file-select-circle {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #3A3A50;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: border-color 0.1s, background 0.1s;
+    background: transparent;
+}
+
+.file-select-circle.selected {
+    border-color: #00C9A7;
+    background: #00C9A7;
+}
+
+.file-select-circle.selected::after {
+    content: '';
+    display: block;
+    width: 5px;
+    height: 8px;
+    border: 2px solid #0A0A0F;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg) translate(-1px, -1px);
+}
+
+/* ── Log drawer — make text selectable ────────────────────────────────────── */
+
+.log-selectable {
+    user-select: text;
+    cursor: text;
+}
+
+/* ── Status bar colours (left accent strip on file cards) ──────────────────── */
 
 .status-bar-idle {
-    background: #4A4A5E;
+    background: #3A3A50;
 }
 
 .status-bar-queued {
-    background: #4A90D9;
+    background: #7C6FE0;
 }
 
 .status-bar-running {
-    background: #FF9500;
+    background: #00C9A7;
 }
 
 .status-bar-paused {
-    background: #C9A700;
+    background: #F59E0B;
 }
 
 .status-bar-done {
-    background: #00C97A;
+    background: #22C55E;
 }
 
 .status-bar-error {
-    background: #FF4757;
+    background: #EF4444;
 }
 
 .status-bar-cancelled {
-    background: #2A2A3A;
+    background: #6B7280;
 }
 
 /* ── Log line colours ──────────────────────────────────────────────────────── */
 
 .log-info {
-    color: #9595A8;
+    color: #C8C8D4;
 }
 
 .log-warning {
-    color: #FFB347;
+    color: #F59E0B;
 }
 
 .log-error {
-    color: #FF4757;
+    color: #EF4444;
 }
 
 .log-debug {
-    color: #4A4A5E;
+    color: #6B7280;
 }
 
 .log-done {
-    color: #00C97A;
+    color: #22C55E;
+    font-weight: 600;
 }
 
-/* ── Input / Select base ───────────────────────────────────────────────────── */
+/* ── Animations ────────────────────────────────────────────────────────────── */
 
-.field {
-    @apply bg-panel border border-border-bright rounded px-3 py-1.5 text-sm
-    text-text-primary outline-none w-full transition-colors duration-150;
-}
-
-.field:focus {
-    @apply border-accent;
-}
-
-.field::placeholder {
-    color: #4A4A5E;
-}
-
-.field:disabled {
-    @apply opacity-40 cursor-not-allowed;
-}
-
-/* ── Buttons ───────────────────────────────────────────────────────────────── */
-
-.btn {
-    @apply inline-flex items-center gap-1.5 rounded px-3 py-1.5 text-sm
-    font-medium transition-all duration-150 cursor-pointer border-none
-    outline-none select-none whitespace-nowrap;
-}
-
-.btn:disabled {
-    @apply opacity-40 cursor-not-allowed pointer-events-none;
-}
-
-.btn-primary {
-    @apply btn bg-accent text-base hover:brightness-110 active:brightness-90;
-}
-
-.btn-ghost {
-    @apply btn bg-transparent text-text-secondary border border-border-bright
-    hover:bg-card hover:text-text-primary active:bg-card-hover;
-}
-
-.btn-danger {
-    @apply btn bg-transparent text-error border border-error/30
-    hover:bg-error/10 active:bg-error/20;
-}
-
-.btn-icon {
-    @apply btn bg-transparent text-text-secondary hover:text-text-primary
-    hover:bg-card-hover p-1.5;
-}
-
-/* ── Animated spinner ──────────────────────────────────────────────────────── */
-
-@keyframes spin {
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
     to {
-        transform: rotate(360deg);
+        opacity: 1;
     }
 }
 
-.spinner {
-    display: inline-block;
-    width: 12px;
-    height: 12px;
-    border: 1.5px solid currentColor;
-    border-top-color: transparent;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+@keyframes slideInRight {
+    from {
+        transform: translateX(20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }
 
-/* ── Progress bar ──────────────────────────────────────────────────────────── */
+@keyframes progressPulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.15s ease;
+}
+
+.animate-slide-in-right {
+    animation: slideInRight 0.2s ease;
+}
+
+.animate-progress-pulse {
+    animation: progressPulse 2s ease-in-out infinite;
+}
+
+/* ── Progress bars ─────────────────────────────────────────────────────────── */
 
 .progress-bar {
-    height: 3px;
+    height: 4px;
     background: #1E1E2A;
     border-radius: 2px;
     overflow: hidden;
@@ -225,53 +281,14 @@ body {
 
 .progress-fill {
     height: 100%;
-    background: #FF9500;
     border-radius: 2px;
-    transition: width 0.4s ease;
+    transition: width 0.3s ease;
 }
 
-.progress-fill.done {
-    background: #00C97A;
+.progress-fill-running {
+    background: linear-gradient(90deg, #00C9A7, #00A8E8);
 }
 
-.progress-fill.paused {
-    background: #C9A700;
-}
-
-/* ── Top loading bar ───────────────────────────────────────────────────────── */
-
-.top-progress-bar {
-    height: 2px;
-    background: #1E1E2A;
-    flex-shrink: 0;
-}
-
-.top-progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #00C9A7, #00C97A);
-    transition: width 0.5s ease;
-}
-
-/* ── Tooltip ───────────────────────────────────────────────────────────────── */
-
-[title] {
-    cursor: default;
-}
-
-/* ── Checkbox ──────────────────────────────────────────────────────────────── */
-
-.checkbox {
-    @apply w-4 h-4 rounded border border-border-bright bg-panel cursor-pointer
-    accent-accent;
-}
-
-/* ── Segmented quality slider ──────────────────────────────────────────────── */
-
-.quality-segment {
-    @apply flex-1 py-1 text-xs text-center rounded cursor-pointer transition-all
-    border border-transparent text-text-muted hover:text-text-secondary;
-}
-
-.quality-segment.active {
-    @apply bg-accent text-base border-accent font-medium;
+.progress-fill-paused {
+    background: #F59E0B;
 }

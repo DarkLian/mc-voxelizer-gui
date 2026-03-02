@@ -25,7 +25,7 @@ export interface FileSettings {
     modId: string;
     /** 1–7 matching the CLI --quality flag */
     quality: number;
-    /** pixel density per voxel face; 0 = auto (resolved by the binary) */
+    /** pixel density per voxel face; 0 = auto (resolved by the binary), 1–64 explicit */
     density: number;
     solidFill: boolean;
 }
@@ -51,12 +51,13 @@ export interface FileEntry {
 // ── Preferences ───────────────────────────────────────────────────────────────
 
 export interface Preferences {
+    /** Empty string = resolved to Desktop at runtime on first launch */
     defaultOutputDir: string;
     /** "fixed" = use defaultOutputDir; "alongside" = next to source file */
     defaultOutputMode: "fixed" | "alongside";
     defaultModId: string;
     defaultQuality: number;
-    /** 0 = auto */
+    /** 0 = auto, 1–64 explicit */
     defaultDensity: number;
     defaultSolidFill: boolean;
     theme: "dark" | "light" | "system";
@@ -67,9 +68,9 @@ export interface Preferences {
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
-    defaultOutputDir: "./output",
+    defaultOutputDir: "",   // resolved to Desktop on first run in App.tsx
     defaultOutputMode: "fixed",
-    defaultModId: "darkaddons",
+    defaultModId: "mymod",
     defaultQuality: 3,
     defaultDensity: 0,
     defaultSolidFill: false,

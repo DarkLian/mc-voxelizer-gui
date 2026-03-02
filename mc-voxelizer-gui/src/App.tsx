@@ -1,5 +1,7 @@
 import {useCallback, useEffect, useRef, useState} from "react";
 import {open} from "@tauri-apps/plugin-dialog";
+import {getCurrentWindow} from "@tauri-apps/api/window";
+import {desktopDir} from "@tauri-apps/api/path";
 import {useAppStore} from "@/store/useAppStore";
 import {useConversionQueue} from "@/hooks/useConversionQueue";
 import {Toolbar} from "@/components/Toolbar";
@@ -9,6 +11,7 @@ import {LogDrawer} from "@/components/LogDrawer";
 import {StatusBar} from "@/components/StatusBar";
 import {PreferencesModal} from "@/components/PreferencesModal";
 import type {FileEntry} from "@/types";
+import {Minus, Square, X} from "lucide-react";
 
 // ── Toast notification ────────────────────────────────────────────────────────
 
@@ -24,6 +27,54 @@ function Toast({message, type}: { message: string; type: "success" | "error" }) 
     );
 }
 
+// ── Titlebar window controls ──────────────────────────────────────────────────
+
+function TitlebarButtons() {
+    const [isMaximized, setIsMaximized] = useState(false);
+    const appWindow = getCurrentWindow();
+
+    useEffect(() => {
+        appWindow.isMaximized().then(setIsMaximized);
+        const unlisten = appWindow.onResized(() => {
+            appWindow.isMaximized().then(setIsMaximized);
+        });
+        return () => {
+            unlisten.then(fn => fn());
+        };
+    }, []);
+
+    return (
+        <div className="titlebar-buttons">
+            <button
+                className="titlebar-btn titlebar-minimize"
+                onClick={() => appWindow.minimize()}
+                title="Minimize"
+            >
+                <Minus size={11}/>
+            </button>
+            <button
+                className="titlebar-btn titlebar-maximize"
+                onClick={() => appWindow.toggleMaximize()}
+                title={isMaximized ? "Restore" : "Maximize"}
+            >
+                {isMaximized
+                    ? <svg width="11" height="11" viewBox="0 0 11 11" fill="currentColor">
+                        <path d="M3 0H11V8H9V2H3V0ZM0 3H8V11H0V3ZM1 4V10H7V4H1Z"/>
+                    </svg>
+                    : <Square size={11}/>
+                }
+            </button>
+            <button
+                className="titlebar-btn titlebar-close"
+                onClick={() => appWindow.close()}
+                title="Close"
+            >
+                <X size={11}/>
+            </button>
+        </div>
+    );
+}
+
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -33,11 +84,24 @@ export default function App() {
     const files = useAppStore((s) => s.files);
     const {
         addFiles, selectAll, deselectAll, openLogDrawer, openPrefs,
-        enqueueSelected,
+        enqueueSelected, updatePreferences,
     } = useAppStore.getState();
 
     const prevFilesRef = useRef<FileEntry[]>([]);
     const [toast, setToast] = useState<{ msg: string; type: "success" | "error" } | null>(null);
+
+    // ── Init default output dir → Desktop on first run ────────────────────────
+
+    useEffect(() => {
+        const prefs = useAppStore.getState().preferences;
+        if (!prefs.defaultOutputDir) {
+            desktopDir().then((dir) => {
+                updatePreferences({defaultOutputDir: dir});
+            }).catch(() => {
+                updatePreferences({defaultOutputDir: "."});
+            });
+        }
+    }, []);
 
     // ── Toast helper ─────────────────────────────────────────────────────────
 
@@ -108,6 +172,12 @@ export default function App() {
                 e.preventDefault();
                 enqueueSelected();
             }
+            if (e.key === "F11") {
+                e.preventDefault();
+                const appWindow = getCurrentWindow();
+                const isFullscreen = await appWindow.isFullscreen();
+                await appWindow.setFullscreen(!isFullscreen);
+            }
         },
         [addFiles, selectAll, deselectAll, openLogDrawer, openPrefs, enqueueSelected]
     );
@@ -117,40 +187,42 @@ export default function App() {
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [handleKeyDown]);
 
-    // ── Window-level drag and drop ────────────────────────────────────────────
+    // ── Window-level drag and drop (via Tauri file-drop events) ─────────────
 
     const [windowDragOver, setWindowDragOver] = useState(false);
-    const windowDragCounter = useRef(0);
 
-    function onWindowDragEnter(e: React.DragEvent) {
-        e.preventDefault();
-        windowDragCounter.current++;
-        setWindowDragOver(true);
-    }
+    useEffect(() => {
+        const appWindow = getCurrentWindow();
+        let unlisten: (() => void) | null = null;
 
-    function onWindowDragLeave(e: React.DragEvent) {
-        e.preventDefault();
-        windowDragCounter.current--;
-        if (windowDragCounter.current === 0) setWindowDragOver(false);
-    }
+        appWindow.onDragDropEvent((event) => {
+            const type = event.payload.type;
+            if (type === "enter" || type === "over") {
+                setWindowDragOver(true);
+            } else if (type === "leave") {
+                setWindowDragOver(false);
+            } else if (type === "drop") {
+                setWindowDragOver(false);
+                // Tauri v2 drop payload has .paths[]
+                const paths: string[] = (event.payload as any).paths ?? [];
+                const valid = paths.filter((p) => {
+                    const ext = p.split(".").pop()?.toLowerCase();
+                    return ext === "obj" || ext === "gltf" || ext === "glb";
+                });
+                if (valid.length > 0) addFiles(valid);
+            }
+        }).then((fn) => {
+            unlisten = fn;
+        });
 
+        return () => {
+            unlisten?.();
+        };
+    }, [addFiles]);
+
+    // Prevent default browser drag behaviour (so Tauri events fire cleanly)
     function onWindowDragOver(e: React.DragEvent) {
         e.preventDefault();
-    }
-
-    function onWindowDrop(e: React.DragEvent) {
-        e.preventDefault();
-        windowDragCounter.current = 0;
-        setWindowDragOver(false);
-        const paths: string[] = [];
-        for (const file of Array.from(e.dataTransfer.files)) {
-            const ext = file.name.split(".").pop()?.toLowerCase();
-            if (ext === "obj" || ext === "gltf" || ext === "glb") {
-                const p = (file as unknown as { path: string }).path;
-                if (p) paths.push(p);
-            }
-        }
-        if (paths.length > 0) addFiles(paths);
     }
 
     // ── Global progress (top bar) ─────────────────────────────────────────────
@@ -163,16 +235,14 @@ export default function App() {
     return (
         <div
             className="flex flex-col h-screen bg-base overflow-hidden"
-            onDragEnter={onWindowDragEnter}
-            onDragLeave={onWindowDragLeave}
             onDragOver={onWindowDragOver}
-            onDrop={onWindowDrop}
         >
             {/* Custom title bar */}
-            <div className="titlebar">
-        <span className="text-[11px] text-text-muted font-medium tracking-wide select-none">
-          Minecraft Voxelizer
-        </span>
+            <div className="titlebar" data-tauri-drag-region>
+                <span className="text-[12px] text-text-muted font-medium tracking-wide select-none">
+                    Minecraft Voxelizer
+                </span>
+                <TitlebarButtons/>
             </div>
 
             {/* Top progress bar */}

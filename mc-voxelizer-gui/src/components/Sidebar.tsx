@@ -1,4 +1,3 @@
-import {useRef, useState} from "react";
 import {Plus} from "lucide-react";
 import {open} from "@tauri-apps/plugin-dialog";
 import {useAppStore} from "@/store/useAppStore";
@@ -10,9 +9,6 @@ export function Sidebar() {
     const selectedIds = useAppStore((s) => s.selectedIds);
     const {addFiles, removeFiles, clearDone, selectFile, selectAll, deselectAll} =
         useAppStore.getState();
-
-    const [isDragOver, setIsDragOver] = useState(false);
-    const dragCounter = useRef(0);
 
     // ── File picker ───────────────────────────────────────────────────────────
 
@@ -26,41 +22,6 @@ export function Sidebar() {
         if (!selected) return;
         const paths = Array.isArray(selected) ? selected : [selected];
         addFiles(paths);
-    }
-
-    // ── Drag and drop ─────────────────────────────────────────────────────────
-
-    function onDragEnter(e: React.DragEvent) {
-        e.preventDefault();
-        dragCounter.current++;
-        setIsDragOver(true);
-    }
-
-    function onDragLeave(e: React.DragEvent) {
-        e.preventDefault();
-        dragCounter.current--;
-        if (dragCounter.current === 0) setIsDragOver(false);
-    }
-
-    function onDragOver(e: React.DragEvent) {
-        e.preventDefault();
-        e.dataTransfer.dropEffect = "copy";
-    }
-
-    function onDrop(e: React.DragEvent) {
-        e.preventDefault();
-        dragCounter.current = 0;
-        setIsDragOver(false);
-        const paths: string[] = [];
-        for (const file of Array.from(e.dataTransfer.files)) {
-            const ext = file.name.split(".").pop()?.toLowerCase();
-            if (ext === "obj" || ext === "gltf" || ext === "glb") {
-                // In Tauri, file.path is available on the File object
-                const path = (file as unknown as { path: string }).path;
-                if (path) paths.push(path);
-            }
-        }
-        if (paths.length > 0) addFiles(paths);
     }
 
     // ── Selection helpers ─────────────────────────────────────────────────────
@@ -80,32 +41,29 @@ export function Sidebar() {
     });
 
     return (
-        <aside
-            className={`flex flex-col border-r border-border w-64 min-w-[220px] max-w-xs
-                  flex-shrink-0 relative transition-colors duration-150
-                  ${isDragOver ? "bg-accent-dim border-accent/40" : "bg-panel"}`}
-            onDragEnter={onDragEnter}
-            onDragLeave={onDragLeave}
-            onDragOver={onDragOver}
-            onDrop={onDrop}
-        >
+        <aside className="flex flex-col border-r border-border w-72 min-w-[240px] max-w-xs
+                          flex-shrink-0 relative transition-colors duration-150">
+
             {/* Header */}
-            <div className="flex items-center justify-between px-3 py-2.5 border-b border-border flex-shrink-0">
-        <span className="text-xs font-semibold text-text-secondary uppercase tracking-widest">
-          Queue
-            {files.length > 0 && (
-                <span className="ml-2 text-text-muted font-normal normal-case tracking-normal">
-              {files.length}
-            </span>
-            )}
-        </span>
-                <button
-                    className="btn-icon"
-                    onClick={handleBrowse}
-                    title="Add files (Ctrl+O)"
-                >
-                    <Plus size={15}/>
-                </button>
+            <div className="flex items-center justify-between px-3 py-3 border-b border-border flex-shrink-0">
+                <span className="text-xs font-semibold text-text-secondary uppercase tracking-widest">
+                    Queue
+                    {files.length > 0 && (
+                        <span className="ml-2 text-text-muted font-normal normal-case tracking-normal">
+                            {files.length}
+                        </span>
+                    )}
+                </span>
+                <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-text-muted mr-1 select-none">Ctrl+click to multi-select</span>
+                    <button
+                        className="btn-icon"
+                        onClick={handleBrowse}
+                        title="Add files (Ctrl+O)"
+                    >
+                        <Plus size={16}/>
+                    </button>
+                </div>
             </div>
 
             {/* File list */}
@@ -149,16 +107,6 @@ export function Sidebar() {
                     >
                         Clear Done
                     </button>
-                </div>
-            )}
-
-            {/* Drag overlay hint */}
-            {isDragOver && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-                    <div className="bg-base/80 rounded-xl px-6 py-4 text-center border border-accent/40">
-                        <p className="text-accent font-medium text-sm">Drop to add files</p>
-                        <p className="text-text-muted text-xs mt-1">.obj · .gltf · .glb</p>
-                    </div>
                 </div>
             )}
         </aside>
