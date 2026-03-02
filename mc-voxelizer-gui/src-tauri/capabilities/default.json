@@ -19,6 +19,7 @@
     "core:tray:default",
     "dialog:allow-open",
     "dialog:allow-save",
+    "dialog:allow-confirm",
     "opener:allow-open-path",
     "fs:allow-write-text-file",
     "fs:allow-read-file",

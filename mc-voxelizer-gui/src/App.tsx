@@ -134,8 +134,10 @@ export default function App() {
 
     useEffect(() => {
         window.__confirmCancelAll = async () => {
-            return window.confirm(
-                "Cancel all in-progress conversions?\nPartial outputs will be left on disk."
+            const { confirm } = await import("@tauri-apps/plugin-dialog");
+            return confirm(
+                "Cancel all in-progress conversions?\nPartial outputs will be left on disk.",
+                { title: "Cancel Conversions", kind: "warning" }
             );
         };
     }, []);

@@ -161,15 +161,14 @@ export const useAppStore = create<AppStore>()(
             clearDone: () => {
                 set((s) => ({
                     files: s.files.filter(
-                        (f) => f.status !== "done" && f.status !== "cancelled"
+                        (f) => f.status !== "done"
                     ),
                     selectedIds: new Set(
                         [...s.selectedIds].filter((id) =>
                             s.files.find(
                                 (f) =>
                                     f.id === id &&
-                                    f.status !== "done" &&
-                                    f.status !== "cancelled"
+                                    f.status !== "done"
                             )
                         )
                     ),
@@ -260,7 +259,7 @@ export const useAppStore = create<AppStore>()(
                 const {files} = get();
                 const validIds = ids.filter((id) => {
                     const f = files.find((x) => x.id === id);
-                    return f && (f.status === "idle" || f.status === "error" || f.status === "cancelled");
+                    return f && (f.status === "idle" || f.status === "error");
                 });
                 if (validIds.length === 0) return;
                 const idSet = new Set(validIds);
@@ -285,11 +284,19 @@ export const useAppStore = create<AppStore>()(
                 set((s) => ({
                     conversionQueue: [],
                     activeId: null,
-                    files: s.files.map((f) =>
-                        f.status === "queued" || f.status === "running"
-                            ? {...f, status: "cancelled" as FileStatus}
-                            : f
-                    ),
+                    files: s.files.map((f) => {
+                        if (f.status === "running" || f.status === "paused" || f.status === "queued") {
+                            return {
+                                ...f,
+                                status: "idle" as FileStatus,
+                                progress: 0,
+                                log: [],
+                                errorSummary: null,
+                                pid: null,
+                            };
+                        }
+                        return f;
+                    }),
                 }));
             },
 
@@ -297,8 +304,8 @@ export const useAppStore = create<AppStore>()(
                 set((s) => ({
                     conversionQueue: s.conversionQueue.filter((x) => x !== id),
                     files: s.files.map((f) =>
-                        f.id === id && (f.status === "queued" || f.status === "running")
-                            ? {...f, status: "cancelled" as FileStatus, pid: null}
+                        f.id === id && f.status === "queued"
+                            ? {...f, status: "idle" as FileStatus, pid: null}
                             : f
                     ),
                 }));
@@ -451,7 +458,6 @@ export interface QueueStats {
     paused: number;
     done: number;
     error: number;
-    cancelled: number;
 }
 
 export const selectQueueStats = (s: AppStore): QueueStats => {
@@ -463,7 +469,6 @@ export const selectQueueStats = (s: AppStore): QueueStats => {
         paused: 0,
         done: 0,
         error: 0,
-        cancelled: 0,
     };
     for (const f of s.files) stats[f.status]++;
     return stats;

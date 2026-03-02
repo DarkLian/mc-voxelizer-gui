@@ -10,7 +10,6 @@ import {
     PauseCircle,
     Terminal,
     Trash2,
-    XCircle,
 } from "lucide-react";
 import type {FileEntry} from "@/types";
 import {shortenPath} from "@/utils/pathUtils";
@@ -29,7 +28,6 @@ const STATUS_ICON = {
     paused: <PauseCircle size={11} className="text-paused"/>,
     done: <CheckCircle2 size={11} className="text-done"/>,
     error: <AlertCircle size={11} className="text-error"/>,
-    cancelled: <XCircle size={11} className="text-cancelled"/>,
 } as const;
 
 const STATUS_LABEL = {
@@ -39,7 +37,6 @@ const STATUS_LABEL = {
     paused: "Paused",
     done: "Done",
     error: "Error",
-    cancelled: "Cancelled",
 } as const;
 
 function formatElapsed(ms: number): string {

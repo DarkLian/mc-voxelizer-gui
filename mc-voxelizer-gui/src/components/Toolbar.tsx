@@ -36,7 +36,7 @@ export function Toolbar({controls}: Props) {
     // Files that can be queued (selected + idle/error/cancelled)
     const queueableCount = [...selectedIds].filter((id) => {
         const f = files.find((x) => x.id === id);
-        return f && (f.status === "idle" || f.status === "error" || f.status === "cancelled");
+        return f && (f.status === "idle" || f.status === "error");
     }).length;
 
     // Error files for "retry" button
@@ -54,8 +54,12 @@ export function Toolbar({controls}: Props) {
 
     async function handleCancelAll() {
         if (!anyActive) return;
+        if (isRunning) await pauseActive();
         const confirmed = await window.__confirmCancelAll?.();
-        if (!confirmed) return;
+        if (!confirmed) {
+            if (isRunning) await resumeActive();
+            return;
+        }
         await killActive();
         cancelAll();
     }

@@ -67,7 +67,7 @@ body {
     border-bottom: 1px solid #1E1E2A;
     display: flex;
     align-items: center;
-    padding: 0 14px;
+    padding: 0 0 0 14px;
     flex-shrink: 0;
     gap: 8px;
 }
@@ -172,6 +172,18 @@ body {
 .log-selectable {
     user-select: text;
     cursor: text;
+}
+
+/* ── Form field text colour ────────────────────────────────────────────────── */
+/* Explicit override: prevents color-scheme:dark from making inputs/selects     */
+/* render with OS-white system text instead of the design-system colour.        */
+
+.field {
+    color: #9595A8;
+}
+
+.field::placeholder {
+    color: #4A4A5E;
 }
 
 /* ── Status bar colours (left accent strip on file cards) ──────────────────── */

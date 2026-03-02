@@ -27,9 +27,20 @@ export function Sidebar() {
     // ── Selection helpers ─────────────────────────────────────────────────────
 
     function handleCardClick(id: string, e: React.MouseEvent) {
-        if (e.ctrlKey || e.metaKey) selectFile(id, "add");
-        else if (e.shiftKey) selectFile(id, "range");
-        else selectFile(id, "single");
+        if (e.ctrlKey || e.metaKey) {
+            selectFile(id, "add");
+        } else if (e.shiftKey) {
+            selectFile(id, "range");
+        } else {
+            // Toggle: deselect if this is already the only selected file,
+            // otherwise select it (clears any multi-selection first).
+            const {selectedIds} = useAppStore.getState();
+            if (selectedIds.size === 1 && selectedIds.has(id)) {
+                deselectAll();
+            } else {
+                selectFile(id, "single");
+            }
+        }
     }
 
     const allSelected =

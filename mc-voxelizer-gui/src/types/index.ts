@@ -6,8 +6,7 @@ export type FileStatus =
     | "running"
     | "paused"
     | "done"
-    | "error"
-    | "cancelled";
+    | "error";
 
 export type LogLevel = "info" | "warning" | "error" | "debug";
 

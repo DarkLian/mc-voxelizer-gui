@@ -41,9 +41,15 @@ export function useConversionQueue() {
     // ── Start a single conversion ────────────────────────────────────────────
 
     const runFile = useCallback(async (fileId: string) => {
+        // FIX #2: Always reset finishedRef at the start of each file.
+        // Without this, the 2nd+ file sees finishedRef=true left over from the
+        // previous file's finish() call, so its finish() returns immediately
+        // and the file is stuck in "running" forever.
+        finishedRef.current = false;
+
         const {
-            files, preferences, addLogLine, setStatus, setPid, setProgress,
-            setElapsed, finishFile, advanceQueue
+            files, preferences, addLogLine, setStatus, setPid,
+            finishFile, advanceQueue
         } = useAppStore.getState();
 
         const file = files.find((f) => f.id === fileId);
@@ -72,32 +78,23 @@ export function useConversionQueue() {
         }
 
         setStatus(fileId, "running");
-        setProgress(fileId, 0);
         startTimeRef.current = Date.now();
-        finishedRef.current = false;
-
-        // Elapsed timer
         timerRef.current = setInterval(() => {
-            setElapsed(fileId, Date.now() - startTimeRef.current);
-        }, 500);
+            useAppStore.getState().setElapsed(fileId, Date.now() - startTimeRef.current);
+        }, 1000);
 
-        addLogLine(fileId, {
-            timestamp: new Date(),
-            level: "info",
-            text: `> mc_voxelizer ${args.join(" ")}`,
-        });
+        // ── stdin helper — reply to "Press Enter to exit…" ──────────────────
 
-        // Helper: respond to the "Press Enter to exit" prompt
         async function replyEnter() {
             if (childRef.current) {
                 try {
                     await childRef.current.write("\n");
-                } catch { /* already exited */
-                }
+                } catch { /* ignore */ }
             }
         }
 
-        // Helper: finish once (guards against close + error both firing)
+        // ── Finish helper — idempotent, called by close/error/pause-prompt ──
+
         function finish(success: boolean, outputJson?: string, outputPng?: string) {
             if (finishedRef.current) return;
             finishedRef.current = true;
@@ -128,13 +125,23 @@ export function useConversionQueue() {
                 const p = progressFromLine(line);
                 if (p !== null) useAppStore.getState().setProgress(fileId, p);
 
-                // The C++ binary ends with "Press Enter to exit..." — reply with \n
+                // The CLI ends with pauseConsole() which prints "Press Enter to exit..."
+                // with NO trailing newline — so Tauri's line-buffered stdout never delivers
+                // that string. Instead we detect "Done!" (which does have a newline) and
+                // immediately write \n to stdin to unblock pauseConsole(). The process then
+                // exits cleanly and fires the close event with code 0.
+                if (line.includes("Done!")) {
+                    await replyEnter();
+                }
+
+                // Also handle isPausePrompt as a fallback in case a future CLI version
+                // adds a trailing newline to the pause prompt.
                 if (isPausePrompt(line)) {
                     await replyEnter();
                 }
             });
 
-            // stderr handler — also check for pause prompt (binary may print it to stderr on error paths)
+            // stderr handler
             command.stderr.on("data", async (line: string) => {
                 useAppStore.getState().addLogLine(fileId, {
                     timestamp: new Date(),
@@ -142,8 +149,8 @@ export function useConversionQueue() {
                     text: line,
                 });
 
-                // Handle pause prompt arriving on stderr (happens on some error paths)
-                if (isPausePrompt(line)) {
+                // Fatal error path also calls pauseConsole() — unblock it the same way
+                if (line.includes("Fatal error:") || isPausePrompt(line)) {
                     await replyEnter();
                 }
             });
@@ -234,6 +241,12 @@ export function useConversionQueue() {
     // ── Cancel ───────────────────────────────────────────────────────────────
 
     const killActive = useCallback(async () => {
+        // FIX #5: Set finishedRef BEFORE killing so the close event that fires
+        // immediately after kill() does NOT call finish() → advanceQueue() →
+        // runFile(next). Without this guard, the next queued file would start
+        // between killActive() and cancelAll(), making Cancel do nothing visible.
+        finishedRef.current = true;
+
         if (childRef.current) {
             try {
                 await childRef.current.kill();
@@ -245,15 +258,14 @@ export function useConversionQueue() {
             clearInterval(timerRef.current);
             timerRef.current = null;
         }
-        finishedRef.current = false;
+        // Do NOT reset finishedRef here. The caller (handleCancelAll in Toolbar)
+        // will call cancelAll() next. finishedRef is reset at the top of the
+        // next runFile() call when the user starts a new conversion.
     }, []);
 
     // ── Force-reset stuck conversion ─────────────────────────────────────────
-    // Used when the binary hangs and close/error never fires (e.g. permission error
-    // where the process is blocked waiting for input).
 
     const forceReset = useCallback(async () => {
-        // Kill child if still alive
         if (childRef.current) {
             try {
                 await childRef.current.kill();

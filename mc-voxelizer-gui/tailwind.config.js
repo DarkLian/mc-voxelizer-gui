@@ -20,7 +20,6 @@ export default {
                 warning: "#FFB347",
                 queued: "#4A90D9",
                 paused: "#C9A700",
-                cancelled: "#555566",
                 "text-primary": "#E2E2E8",
                 "text-secondary": "#9595A8",
                 "text-muted": "#4A4A5E",
