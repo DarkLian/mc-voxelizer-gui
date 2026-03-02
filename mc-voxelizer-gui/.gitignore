@@ -1,0 +1,16 @@
+# Node
+node_modules/
+dist/
+
+# Rust / Cargo
+src-tauri/target/
+
+# Tauri generated files
+src-tauri/gen/
+
+# Binaries (never commit the CLI exe — copy it in manually per README)
+src-tauri/binaries/*.exe
+
+# Misc
+.DS_Store
+*.log

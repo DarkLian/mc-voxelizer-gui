@@ -1,0 +1,32 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for the MC Voxelizer GUI",
+  "windows": ["main"],
+  "permissions": [
+    "core:path:default",
+    "core:event:default",
+    "core:window:default",
+    "core:app:default",
+    "core:resources:default",
+    "core:menu:default",
+    "core:tray:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "opener:allow-open-path",
+    "fs:allow-write-text-file",
+    "fs:allow-read-file",
+    {
+      "identifier": "shell:allow-execute",
+      "allow": [
+        {
+          "name": "binaries/mc_voxelizer-v1.3.0",
+          "sidecar": true,
+          "args": true
+        }
+      ]
+    },
+    "shell:allow-kill",
+    "shell:allow-stdin-write"
+  ]
+}
