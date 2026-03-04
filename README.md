@@ -1,6 +1,6 @@
 # Minecraft Voxelizer GUI
 
-A Tauri-based desktop GUI for `mc_voxelizer`. Wraps the CLI binary in a
+A Tauri-based desktop application for `mc_voxelizer`. Wraps the CLI binary in a
 queue-based conversion interface with per-file settings, live log streaming,
 pause/resume, and batch editing.
 
