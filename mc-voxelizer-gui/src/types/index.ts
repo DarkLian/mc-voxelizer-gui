@@ -107,6 +107,6 @@ export const QUALITY_LABELS: Record<number, string> = {
     3: "32³ — recommended",
     4: "48³",
     5: "64³ — good detail",
-    6: "96³ — face detail",
-    7: "128³ — maximum",
+    6: "96³",
+    7: "128³ — maximum, but slowest",
 };

@@ -18,7 +18,7 @@ import {resolveOutputDir} from "@/utils/pathUtils";
 import {detectLogLevel, isPausePrompt, progressFromLine} from "@/utils/logParser";
 
 // Name registered in tauri.conf.json  bundle.externalBin
-const SIDECAR_NAME = "binaries/mc_voxelizer-v1.3.0";
+const SIDECAR_NAME = "binaries/mc_voxelizer-v1.4.0";
 
 export function useConversionQueue() {
     const childRef = useRef<Child | null>(null);
