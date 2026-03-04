@@ -17,15 +17,6 @@ export function shortenPath(filePath: string, maxLen = 45): string {
     return dir.slice(0, remaining) + "…/" + name;
 }
 
-/** Sanitise a string to be a valid Minecraft model name (no spaces, etc.) */
-export function sanitiseModelName(raw: string): string {
-    return raw
-        .toLowerCase()
-        .replace(/\s+/g, "_")
-        .replace(/[^a-z0-9_\-]/g, "")
-        .slice(0, 64);
-}
-
 /** Validate a Minecraft namespace / mod ID. */
 export function isValidModId(id: string): boolean {
     return /^[a-z0-9_\-]{1,32}$/.test(id);

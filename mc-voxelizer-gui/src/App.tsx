@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useRef, useState} from "react";
+import React, {useCallback, useEffect, useRef, useState} from "react";
 import {open} from "@tauri-apps/plugin-dialog";
 import {getCurrentWindow} from "@tauri-apps/api/window";
 import {desktopDir} from "@tauri-apps/api/path";
@@ -134,10 +134,10 @@ export default function App() {
 
     useEffect(() => {
         window.__confirmCancelAll = async () => {
-            const { confirm } = await import("@tauri-apps/plugin-dialog");
+            const {confirm} = await import("@tauri-apps/plugin-dialog");
             return confirm(
                 "Cancel all in-progress conversions?\nPartial outputs will be left on disk.",
-                { title: "Cancel Conversions", kind: "warning" }
+                {title: "Cancel Conversions", kind: "warning"}
             );
         };
     }, []);
@@ -222,7 +222,7 @@ export default function App() {
         };
     }, [addFiles]);
 
-    // Prevent default browser drag behaviour (so Tauri events fire cleanly)
+    // Prevent default browser drag behavior (so Tauri events fire cleanly)
     function onWindowDragOver(e: React.DragEvent) {
         e.preventDefault();
     }

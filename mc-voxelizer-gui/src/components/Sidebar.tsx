@@ -1,8 +1,8 @@
-import {Plus} from "lucide-react";
-import {open} from "@tauri-apps/plugin-dialog";
 import {useAppStore} from "@/store/useAppStore";
+import {open} from "@tauri-apps/plugin-dialog";
 import {FileCard} from "./FileCard";
 import {EmptyState} from "./EmptyState";
+import React from "react";
 
 export function Sidebar() {
     const files = useAppStore((s) => s.files);
@@ -55,7 +55,7 @@ export function Sidebar() {
         <aside className="flex flex-col border-r border-border w-72 min-w-[240px] max-w-xs
                           flex-shrink-0 relative transition-colors duration-150">
 
-            {/* Header */}
+            {/* Header — Fix #6: removed "Ctrl+click to multi-select" text and the + button */}
             <div className="flex items-center justify-between px-3 py-3 border-b border-border flex-shrink-0">
                 <span className="text-xs font-semibold text-text-secondary uppercase tracking-widest">
                     Queue
@@ -65,16 +65,6 @@ export function Sidebar() {
                         </span>
                     )}
                 </span>
-                <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-text-muted mr-1 select-none">Ctrl+click to multi-select</span>
-                    <button
-                        className="btn-icon"
-                        onClick={handleBrowse}
-                        title="Add files (Ctrl+O)"
-                    >
-                        <Plus size={16}/>
-                    </button>
-                </div>
             </div>
 
             {/* File list */}

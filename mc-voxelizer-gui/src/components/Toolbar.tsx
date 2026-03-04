@@ -1,4 +1,4 @@
-import {AlertTriangle, Pause, Play, Plus, RefreshCw, Settings, Square, Terminal,} from "lucide-react";
+import {AlertTriangle, Pause, Play, Plus, RefreshCw, Settings, Square,} from "lucide-react";
 import {open} from "@tauri-apps/plugin-dialog";
 import {selectRunningFile, useAppStore} from "@/store/useAppStore";
 
@@ -21,8 +21,11 @@ export function Toolbar({controls}: Props) {
     const selectedIds = useAppStore((s) => s.selectedIds);
     const logBadge = useAppStore((s) => s.logBadgeCount);
     const files = useAppStore((s) => s.files);
+    // Fix #5: read logDrawerOpen so the button can toggle
+    const logDrawerOpen = useAppStore((s) => s.logDrawerOpen);
+
     const {
-        addFiles, enqueueSelected, cancelAll, openLogDrawer, openPrefs,
+        addFiles, enqueueSelected, cancelAll, openLogDrawer, closeLogDrawer, openPrefs,
         enqueueIds,
     } = useAppStore.getState();
 
@@ -33,7 +36,7 @@ export function Toolbar({controls}: Props) {
     // Detect stuck state: activeId is set but child is gone (no PID on running file)
     const isStuck = activeId !== null && runningFile?.status === "running" && !runningFile?.pid;
 
-    // Files that can be queued (selected + idle/error/cancelled)
+    // Files that can be queued (selected + idle/error)
     const queueableCount = [...selectedIds].filter((id) => {
         const f = files.find((x) => x.id === id);
         return f && (f.status === "idle" || f.status === "error");
@@ -62,6 +65,15 @@ export function Toolbar({controls}: Props) {
         }
         await killActive();
         cancelAll();
+    }
+
+    // Fix #5: toggle the log drawer; show >_ when open (to close), <_ when closed (to open)
+    function handleToggleLogs() {
+        if (logDrawerOpen) {
+            closeLogDrawer();
+        } else {
+            openLogDrawer();
+        }
     }
 
     return (
@@ -154,13 +166,15 @@ export function Toolbar({controls}: Props) {
 
             <div className="w-px h-5 bg-border mx-1"/>
 
-            {/* Logs */}
+            {/* Fix #5: Logs toggle button — <_ to open, >_ to close */}
             <button
                 className="btn-icon relative"
-                onClick={() => openLogDrawer()}
-                title="View logs (Ctrl+L)"
+                onClick={handleToggleLogs}
+                title={logDrawerOpen ? "Collapse logs (Ctrl+L)" : "Expand logs (Ctrl+L)"}
             >
-                <Terminal size={16}/>
+                <span className="font-mono text-[13px] leading-none select-none">
+                    {logDrawerOpen ? ">_" : "<_"}
+                </span>
                 {logBadge > 0 && (
                     <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-error
                            text-[9px] text-white flex items-center justify-center font-bold">

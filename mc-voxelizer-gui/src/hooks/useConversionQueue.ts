@@ -89,7 +89,8 @@ export function useConversionQueue() {
             if (childRef.current) {
                 try {
                     await childRef.current.write("\n");
-                } catch { /* ignore */ }
+                } catch { /* ignore */
+                }
             }
         }
 

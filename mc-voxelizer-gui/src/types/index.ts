@@ -66,13 +66,14 @@ export interface Preferences {
     binaryPath: string | null;
 }
 
+// Fix #4: solid fill enabled by default
 export const DEFAULT_PREFERENCES: Preferences = {
     defaultOutputDir: "",   // resolved to Desktop on first run in App.tsx
     defaultOutputMode: "fixed",
     defaultModId: "mymod",
     defaultQuality: 3,
     defaultDensity: 0,
-    defaultSolidFill: false,
+    defaultSolidFill: true,  // was false
     theme: "dark",
     showToastOnComplete: true,
     playSoundOnComplete: false,
@@ -80,15 +81,6 @@ export const DEFAULT_PREFERENCES: Preferences = {
 };
 
 // ── UI state ──────────────────────────────────────────────────────────────────
-
-export type BatchApplyScope =
-    | "all"
-    | "selected"
-    | "quality"
-    | "density"
-    | "modId"
-    | "outputDir";
-
 // ── Quality resolution lookup (mirrors C++ qualityToResolution) ───────────────
 
 export const QUALITY_RESOLUTION: Record<number, number> = {

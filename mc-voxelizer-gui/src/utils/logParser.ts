@@ -24,7 +24,7 @@ export function detectLogLevel(line: string): LogLevel {
  * Stages detected from C++ stdout:
  *   [ObjLoader] / [GltfLoader]  → Loading           → 10%
  *   [Density]                   → Density resolved   → 15%
- *   [Normalizer]                → Normalising        → 20%
+ *   [Normalizer]                → Normalizing → 20%
  *   [Voxelizer] Quality …       → Voxelising start   → 25%
  *   [Voxelizer] Grid:           → Voxelising done    → 55%
  *   [GreedyMesher]              → Meshing            → 65%
@@ -50,16 +50,6 @@ export function progressFromLine(line: string): number | null {
     return null;
 }
 
-/** Returns true when the process has finished (success or failure). */
-export function isTerminalLine(line: string): boolean {
-    return (
-        line.includes("Done!") ||
-        line.includes("Fatal error:") ||
-        line.includes("Press Enter to exit")
-    );
-}
-
-/** True when the process is asking for Enter — we must reply with "\n". */
 export function isPausePrompt(line: string): boolean {
     return line.includes("Press Enter to exit");
 }

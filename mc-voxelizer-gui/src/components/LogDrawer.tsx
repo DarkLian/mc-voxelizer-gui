@@ -1,14 +1,17 @@
-import {useEffect, useRef, useState} from "react";
-import {ChevronDown, Copy, Download, Search, X} from "lucide-react";
+import React, {useEffect, useRef, useState} from "react";
+import {ChevronDown, Copy, Download, Search} from "lucide-react";
 import {useAppStore} from "@/store/useAppStore";
 import type {LogLevel, LogLine} from "@/types";
 import {save} from "@tauri-apps/plugin-dialog";
 import {writeTextFile} from "@tauri-apps/plugin-fs";
 
+// ── Persist drawer width across close/open within a session ──────────────────
+let savedLogDrawerWidth = 384; // default: matches former w-96
+
 export function LogDrawer() {
     const files = useAppStore((s) => s.files);
     const filterFileId = useAppStore((s) => s.logFilterFileId);
-    const {closeLogDrawer} = useAppStore.getState();
+    useAppStore.getState();
 
     const [search, setSearch] = useState("");
     const [levels, setLevels] = useState<Set<LogLevel>>(
@@ -18,11 +21,38 @@ export function LogDrawer() {
     const [showTimestamps, setShowTimestamps] = useState(true);
     const [fileFilter, setFileFilter] = useState(filterFileId);
 
+    // Fix #7: resizable width, restored from last session
+    const [width, setWidth] = useState(savedLogDrawerWidth);
+
     const scrollRef = useRef<HTMLDivElement>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
 
     // Sync external filter changes (e.g. clicking error card)
     useEffect(() => setFileFilter(filterFileId), [filterFileId]);
+
+    // ── Resize handle (left edge) ─────────────────────────────────────────────
+
+    function handleResizeMouseDown(e: React.MouseEvent) {
+        e.preventDefault();
+        const startX = e.clientX;
+        const startWidth = width;
+
+        function onMouseMove(e: MouseEvent) {
+            // Dragging left (negative delta) expands; dragging right shrinks
+            const delta = startX - e.clientX;
+            const newWidth = Math.max(280, Math.min(900, startWidth + delta));
+            setWidth(newWidth);
+            savedLogDrawerWidth = newWidth;
+        }
+
+        function onMouseUp() {
+            window.removeEventListener("mousemove", onMouseMove);
+            window.removeEventListener("mouseup", onMouseUp);
+        }
+
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
+    }
 
     // ── Collect visible log lines ─────────────────────────────────────────────
 
@@ -99,10 +129,19 @@ export function LogDrawer() {
     }
 
     return (
-        <div className="w-96 min-w-[300px] flex-shrink-0 border-l border-border
-                    flex flex-col bg-panel animate-slide-in-right relative">
+        <div
+            className="flex-shrink-0 border-l border-border flex flex-col bg-panel animate-slide-in-right relative"
+            style={{width: `${width}px`, minWidth: "280px"}}
+        >
+            {/* Fix #7: left-edge resize handle */}
+            <div
+                className="absolute left-0 top-0 bottom-0 w-1.5 cursor-col-resize z-10
+                           hover:bg-accent/40 active:bg-accent/60 transition-colors"
+                onMouseDown={handleResizeMouseDown}
+                title="Drag to resize"
+            />
 
-            {/* Header */}
+            {/* Header — Fix #5: removed X, Copy moved to where Download was, Download at far right */}
             <div className="flex items-center gap-2 px-3 py-2.5 border-b border-border flex-shrink-0">
                 <span className="text-xs font-semibold uppercase tracking-widest text-text-secondary">
                     Logs
@@ -111,15 +150,14 @@ export function LogDrawer() {
                     {visibleLines.length} lines
                 </span>
                 <div className="ml-auto flex gap-1">
+                    {/* Fix #5: Copy shifted right (where Download was), Download at end (where X was) */}
                     <button className="btn-icon" title="Copy all to clipboard" onClick={copyAll}>
                         <Copy size={14}/>
                     </button>
                     <button className="btn-icon" title="Save to file" onClick={saveToFile}>
                         <Download size={14}/>
                     </button>
-                    <button className="btn-icon" onClick={closeLogDrawer} title="Close">
-                        <X size={14}/>
-                    </button>
+                    {/* X button removed — use the >_ toolbar button to collapse */}
                 </div>
             </div>
 
@@ -152,7 +190,7 @@ export function LogDrawer() {
                 </div>
             </div>
 
-            {/* Level toggles — plain text buttons, no radio circles */}
+            {/* Level toggles */}
             <div className="px-2 py-1.5 border-b border-border flex gap-1.5 flex-shrink-0 items-center">
                 {(["info", "warning", "error", "debug"] as LogLevel[]).map((lvl) => (
                     <button
@@ -182,28 +220,28 @@ export function LogDrawer() {
                 </button>
             </div>
 
-            {/* Log content — selectable text */}
+            {/* Log content */}
             <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto p-2 font-mono text-[12px] leading-relaxed log-selectable"
                 onScroll={handleScroll}
             >
                 {visibleLines.length === 0 ? (
-                    <p className="text-text-muted text-center mt-8">No log lines yet</p>
+                    <p className="text-text-muted text-center mt-8 text-xs">No log lines match the current filter.</p>
                 ) : (
                     visibleLines.map((line) => (
-                        <div key={line.id} className={`flex gap-2 ${lineClass(line)} mb-0.5`}>
+                        <div key={line.id} className={`flex gap-2 ${lineClass(line)}`}>
                             {showTimestamps && (
-                                <span className="text-text-muted shrink-0 select-none opacity-50">
+                                <span className="text-text-muted shrink-0 select-none">
                                     {line.timestamp.toTimeString().slice(0, 8)}
                                 </span>
                             )}
-                            {fileFilter === "all" && (
-                                <span className="text-text-muted shrink-0 opacity-50 max-w-[60px] truncate">
+                            {files.length > 1 && fileFilter === "all" && (
+                                <span className="text-text-muted shrink-0 truncate max-w-[80px]" title={line.fileName}>
                                     [{line.fileName}]
                                 </span>
                             )}
-                            <span className="break-all whitespace-pre-wrap">{line.text}</span>
+                            <span className="break-all">{line.text}</span>
                         </div>
                     ))
                 )}
@@ -212,18 +250,18 @@ export function LogDrawer() {
 
             {/* Auto-scroll indicator */}
             {!autoScroll && (
-                <button
-                    className="absolute bottom-2 right-2 bg-card border border-border-bright
-                     rounded-full px-2 py-1 text-[11px] text-text-secondary
-                     flex items-center gap-1 hover:bg-card-hover transition-colors"
-                    onClick={() => {
-                        setAutoScroll(true);
-                        bottomRef.current?.scrollIntoView({behavior: "smooth"});
-                    }}
-                >
-                    <ChevronDown size={10}/>
-                    Jump to bottom
-                </button>
+                <div className="px-3 py-1.5 border-t border-border flex-shrink-0">
+                    <button
+                        className="text-[11px] text-accent underline w-full text-center"
+                        onClick={() => {
+                            setAutoScroll(true);
+                            bottomRef.current?.scrollIntoView({behavior: "smooth"});
+                        }}
+                    >
+                        <ChevronDown size={11} className="inline mr-1"/>
+                        Jump to latest
+                    </button>
+                </div>
             )}
         </div>
     );

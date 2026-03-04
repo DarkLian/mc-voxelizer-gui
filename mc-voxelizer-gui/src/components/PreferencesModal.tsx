@@ -1,4 +1,4 @@
-import {useState} from "react";
+import React, {useState} from "react";
 import {FolderOpen, X} from "lucide-react";
 import {open} from "@tauri-apps/plugin-dialog";
 import {useAppStore} from "@/store/useAppStore";
@@ -34,8 +34,6 @@ export function PreferencesModal() {
         if (file && typeof file === "string") patch({binaryPath: file});
     }
 
-    // Density options: 0 = auto, then 1–64
-
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 animate-fade-in">
             <div className="bg-panel border border-border-bright rounded-xl shadow-2xl
@@ -61,7 +59,7 @@ export function PreferencesModal() {
                                     className="field flex-1 text-xs"
                                     value={draft.defaultOutputDir}
                                     onChange={(e) => patch({defaultOutputDir: e.target.value})}
-                                    placeholder="e.g. C:\Users\You\Desktop"
+                                    placeholder="e.g. C:\Users\You\Desktop\output"
                                 />
                                 <button className="btn-ghost px-2" onClick={browseDefault}>
                                     <FolderOpen size={14}/>
@@ -69,20 +67,20 @@ export function PreferencesModal() {
                             </div>
                         </Field>
 
-                        <Field label="Output Location">
+                        <Field label="Default Output Mode">
                             <div className="flex flex-col gap-1.5">
-                                {(["fixed", "alongside"] as const).map((m) => (
-                                    <label key={m} className="flex items-center gap-2 cursor-pointer select-none">
+                                {(["fixed", "alongside"] as const).map((mode) => (
+                                    <label key={mode} className="flex items-center gap-2 cursor-pointer select-none">
                                         <input
                                             type="radio"
                                             name="outputMode"
-                                            value={m}
-                                            checked={draft.defaultOutputMode === m}
-                                            onChange={() => patch({defaultOutputMode: m})}
+                                            value={mode}
+                                            checked={draft.defaultOutputMode === mode}
+                                            onChange={() => patch({defaultOutputMode: mode})}
                                             className="accent-accent"
                                         />
                                         <span className="text-sm text-text-secondary">
-                                            {m === "fixed"
+                                            {mode === "fixed"
                                                 ? "Use the fixed directory above"
                                                 : "Place output next to the source file"}
                                         </span>
@@ -120,11 +118,12 @@ export function PreferencesModal() {
                             >
                                 <option value={0}>0 — Auto (recommended)</option>
                                 {Array.from({length: 64}, (_, i) => i + 1).map((d) => (
-                                    <option key={d} value={d}>{d}px</option>
+                                    <option key={d} value={d}>{d} px</option>
                                 ))}
                             </select>
                         </Field>
 
+                        {/* Fix #4: "Solid fill by default" (DEFAULT_PREFERENCES.defaultSolidFill is now true) */}
                         <Field label="">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
@@ -138,32 +137,7 @@ export function PreferencesModal() {
                         </Field>
                     </Section>
 
-                    {/* NOTIFICATIONS */}
-                    <Section label="Notifications">
-                        <Field label="">
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <input
-                                    type="checkbox"
-                                    checked={draft.showToastOnComplete}
-                                    onChange={(e) => patch({showToastOnComplete: e.target.checked})}
-                                    className="accent-accent"
-                                />
-                                <span className="text-sm text-text-secondary">Show toast on file complete</span>
-                            </label>
-                        </Field>
-
-                        <Field label="">
-                            <label className="flex items-center gap-2 cursor-pointer select-none">
-                                <input
-                                    type="checkbox"
-                                    checked={draft.playSoundOnComplete}
-                                    onChange={(e) => patch({playSoundOnComplete: e.target.checked})}
-                                    className="accent-accent"
-                                />
-                                <span className="text-sm text-text-secondary">Play sound on complete</span>
-                            </label>
-                        </Field>
-                    </Section>
+                    {/* Fix #3: Notifications section removed entirely */}
 
                     {/* ADVANCED */}
                     <Section label="Advanced">
@@ -195,7 +169,6 @@ export function PreferencesModal() {
                         className="btn-ghost text-xs text-error border-error/20 hover:bg-error/10"
                         onClick={() => {
                             resetPreferences();
-                            // Fix: use DEFAULT_PREFERENCES directly, not the stale `prefs` snapshot
                             setDraft({...DEFAULT_PREFERENCES});
                         }}
                     >

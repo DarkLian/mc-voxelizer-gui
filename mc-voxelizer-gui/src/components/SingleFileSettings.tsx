@@ -1,4 +1,4 @@
-import {useState} from "react";
+import React, {useState} from "react";
 import {ChevronDown, FolderOpen} from "lucide-react";
 import {open} from "@tauri-apps/plugin-dialog";
 import type {FileEntry, FileSettings} from "@/types";
@@ -130,6 +130,7 @@ export function SingleFileSettings({file}: Props) {
 
             {/* DENSITY */}
             <Section label="Pixel Density">
+                {/* Fix #8: label shows n×n pixels per voxel face */}
                 <Field label={`Density: ${s.density === 0 ? "Auto" : `${s.density}px`}`}>
                     <div className="flex items-center gap-3">
                         <span className="text-xs text-text-muted w-8 shrink-0">Auto</span>
@@ -147,13 +148,17 @@ export function SingleFileSettings({file}: Props) {
                     </div>
                     <div className="flex justify-between mt-1">
                         <span className="text-[11px] text-text-muted">
-                            {s.density === 0 ? "Resolved automatically by the binary" : `${s.density} pixels per voxel face`}
+                            {s.density === 0
+                                ? "Resolved automatically by the binary"
+                                /* Fix #8: n×n pixels per voxel face */
+                                : `${s.density}×${s.density} pixels per voxel face`}
                         </span>
                         <span className="text-[11px] text-text-muted mono">
                             atlas ~{atlasEstimate}px
                         </span>
                     </div>
-                    {s.density === 0 && (
+                    {/* Fix #1: show "Reset to Auto" only when density is NOT auto (i.e. != 0) */}
+                    {s.density !== 0 && (
                         <button
                             className="text-[11px] text-accent underline mt-1"
                             onClick={() => patch({density: 0})}
