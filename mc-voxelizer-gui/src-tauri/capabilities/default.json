@@ -29,7 +29,12 @@
       "identifier": "shell:allow-spawn",
       "allow": [
         {
-          "name": "binaries/mc_voxelizer-v1.4.0",
+          "name": "binaries/mc_voxelizer_element-v1.5.0",
+          "sidecar": true,
+          "args": true
+        },
+        {
+          "name": "binaries/mc_voxelizer_atlas-v1.5.0",
           "sidecar": true,
           "args": true
         }

@@ -16,15 +16,18 @@ import {invoke} from "@tauri-apps/api/core";
 import {useAppStore} from "@/store/useAppStore";
 import {resolveOutputDir} from "@/utils/pathUtils";
 import {detectLogLevel, isPausePrompt, progressFromLine} from "@/utils/logParser";
+import type {OptimizationMode} from "@/types";
 
-// Name registered in tauri.conf.json  bundle.externalBin
-const SIDECAR_NAME = "binaries/mc_voxelizer-v1.4.0";
+// Sidecar names registered in tauri.conf.json bundle.externalBin
+const SIDECAR_NAMES: Record<OptimizationMode, string> = {
+    element: "binaries/mc_voxelizer_element-v1.5.0",
+    atlas: "binaries/mc_voxelizer_atlas-v1.5.0",
+};
 
 export function useConversionQueue() {
     const childRef = useRef<Child | null>(null);
     const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const startTimeRef = useRef<number>(0);
-    // Track whether close/error already fired for the current file
     const finishedRef = useRef<boolean>(false);
 
     // ── Cleanup helper ───────────────────────────────────────────────────────
@@ -41,19 +44,16 @@ export function useConversionQueue() {
     // ── Start a single conversion ────────────────────────────────────────────
 
     const runFile = useCallback(async (fileId: string) => {
-        // FIX #2: Always reset finishedRef at the start of each file.
-        // Without this, the 2nd+ file sees finishedRef=true left over from the
-        // previous file's finish() call, so its finish() returns immediately
-        // and the file is stuck in "running" forever.
         finishedRef.current = false;
 
-        const {
-            files, preferences, addLogLine, setStatus, setPid,
-            finishFile, advanceQueue
-        } = useAppStore.getState();
+        const {files, preferences, setStatus, setPid, addLogLine, finishFile, advanceQueue} =
+            useAppStore.getState();
 
         const file = files.find((f) => f.id === fileId);
         if (!file) return;
+
+        setStatus(fileId, "running");
+        startTimeRef.current = Date.now();
 
         const outDir = resolveOutputDir(
             file.settings.outputDir,
@@ -62,7 +62,6 @@ export function useConversionQueue() {
             preferences.defaultOutputDir
         );
 
-        // Build CLI arguments
         const args: string[] = [
             file.sourcePath,
             "--quality", String(file.settings.quality),
@@ -77,24 +76,16 @@ export function useConversionQueue() {
             args.push("--solid");
         }
 
-        setStatus(fileId, "running");
-        startTimeRef.current = Date.now();
         timerRef.current = setInterval(() => {
             useAppStore.getState().setElapsed(fileId, Date.now() - startTimeRef.current);
-        }, 1000);
-
-        // ── stdin helper — reply to "Press Enter to exit…" ──────────────────
+        }, 500);
 
         async function replyEnter() {
-            if (childRef.current) {
-                try {
-                    await childRef.current.write("\n");
-                } catch { /* ignore */
-                }
+            try {
+                if (childRef.current) await childRef.current.write("\n");
+            } catch (_) { /* ignore */
             }
         }
-
-        // ── Finish helper — idempotent, called by close/error/pause-prompt ──
 
         function finish(success: boolean, outputJson?: string, outputPng?: string) {
             if (finishedRef.current) return;
@@ -112,9 +103,13 @@ export function useConversionQueue() {
         }
 
         try {
-            const command = Command.sidecar(SIDECAR_NAME, args);
+            // ?? "element" guards against undefined from stale persisted file
+            // settings that predate the optimizationMode field (issues 8 & 9).
+            const mode: OptimizationMode = file.settings.optimizationMode ?? "element";
+            const sidecarName = preferences.binaryPath ?? SIDECAR_NAMES[mode];
 
-            // stdout handler
+            const command = Command.sidecar(sidecarName, args);
+
             command.stdout.on("data", async (line: string) => {
                 const level = detectLogLevel(line);
                 useAppStore.getState().addLogLine(fileId, {
@@ -126,45 +121,25 @@ export function useConversionQueue() {
                 const p = progressFromLine(line);
                 if (p !== null) useAppStore.getState().setProgress(fileId, p);
 
-                // The CLI ends with pauseConsole() which prints "Press Enter to exit..."
-                // with NO trailing newline — so Tauri's line-buffered stdout never delivers
-                // that string. Instead we detect "Done!" (which does have a newline) and
-                // immediately write \n to stdin to unblock pauseConsole(). The process then
-                // exits cleanly and fires the close event with code 0.
-                if (line.includes("Done!")) {
-                    await replyEnter();
-                }
-
-                // Also handle isPausePrompt as a fallback in case a future CLI version
-                // adds a trailing newline to the pause prompt.
-                if (isPausePrompt(line)) {
-                    await replyEnter();
-                }
+                if (line.includes("Done!")) await replyEnter();
+                if (isPausePrompt(line)) await replyEnter();
             });
 
-            // stderr handler
             command.stderr.on("data", async (line: string) => {
                 useAppStore.getState().addLogLine(fileId, {
                     timestamp: new Date(),
                     level: "warning",
                     text: line,
                 });
-
-                // Fatal error path also calls pauseConsole() — unblock it the same way
                 if (line.includes("Fatal error:") || isPausePrompt(line)) {
                     await replyEnter();
                 }
             });
 
-            // Process exit handler
             command.on("close", (data: { code: number | null }) => {
                 const success = data.code === 0;
-                const outputJson = success
-                    ? `${outDir}/${file.settings.modelName}.json`
-                    : undefined;
-                const outputPng = success
-                    ? `${outDir}/${file.settings.modelName}.png`
-                    : undefined;
+                const outputJson = success ? `${outDir}/${file.settings.modelName}.json` : undefined;
+                const outputPng = success ? `${outDir}/${file.settings.modelName}.png` : undefined;
                 finish(success, outputJson, outputPng);
             });
 
@@ -209,14 +184,13 @@ export function useConversionQueue() {
         });
     }, [runFile]);
 
-    // ── Pause / resume (Windows: suspend/resume the process) ────────────────
+    // ── Pause / resume ───────────────────────────────────────────────────────
 
     const pauseActive = useCallback(async () => {
         const {activeId, files, setStatus} = useAppStore.getState();
         if (!activeId) return;
         const file = files.find((f) => f.id === activeId);
         if (!file || file.status !== "running") return;
-
         try {
             await invoke("suspend_process", {pid: file.pid});
             setStatus(activeId, "paused");
@@ -230,7 +204,6 @@ export function useConversionQueue() {
         if (!activeId) return;
         const file = files.find((f) => f.id === activeId);
         if (!file || file.status !== "paused") return;
-
         try {
             await invoke("resume_process", {pid: file.pid});
             setStatus(activeId, "running");
@@ -242,29 +215,18 @@ export function useConversionQueue() {
     // ── Cancel ───────────────────────────────────────────────────────────────
 
     const killActive = useCallback(async () => {
-        // FIX #5: Set finishedRef BEFORE killing so the close event that fires
-        // immediately after kill() does NOT call finish() → advanceQueue() →
-        // runFile(next). Without this guard, the next queued file would start
-        // between killActive() and cancelAll(), making Cancel do nothing visible.
         finishedRef.current = true;
-
-        if (childRef.current) {
-            try {
-                await childRef.current.kill();
-            } catch { /* ignore */
-            }
-            childRef.current = null;
+        cleanup();
+        const {activeId, files} = useAppStore.getState();
+        if (!activeId) return;
+        const file = files.find((f) => f.id === activeId);
+        if (!file) return;
+        try {
+            if (childRef.current) await childRef.current.kill();
+        } catch (_) { /* ignore */
         }
-        if (timerRef.current) {
-            clearInterval(timerRef.current);
-            timerRef.current = null;
-        }
-        // Do NOT reset finishedRef here. The caller (handleCancelAll in Toolbar)
-        // will call cancelAll() next. finishedRef is reset at the top of the
-        // next runFile() call when the user starts a new conversion.
+        useAppStore.getState().forceResetActive();
     }, []);
-
-    // ── Force-reset stuck conversion ─────────────────────────────────────────
 
     const forceReset = useCallback(async () => {
         if (childRef.current) {
@@ -277,5 +239,5 @@ export function useConversionQueue() {
         useAppStore.getState().forceResetActive();
     }, []);
 
-    return {killActive, pauseActive, resumeActive, forceReset};
+    return {pauseActive, resumeActive, killActive, forceReset};
 }

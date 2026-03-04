@@ -22,6 +22,9 @@ export function SingleFileSettings({file}: Props) {
     const atlasEstimate =
         s.density === 0 ? `~${gridRes * 8}` : `~${gridRes * s.density}`;
 
+    // issue 8: guard against stale persisted file missing optimizationMode
+    const optimizationMode = s.optimizationMode ?? "element";
+
     function patch(p: Partial<FileSettings>) {
         updateSettings(file.id, p);
     }
@@ -48,13 +51,16 @@ export function SingleFileSettings({file}: Props) {
 
     const allIds = files.map((f) => f.id);
 
-    function applyTo(scope: "all" | "quality" | "density" | "modId" | "outputDir") {
+    // issue 7: added "modelName" scope
+    function applyTo(scope: "all" | "quality" | "density" | "modId" | "outputDir" | "optimizationMode" | "modelName") {
         const p: Partial<FileSettings> =
             scope === "all" ? {...s}
                 : scope === "quality" ? {quality: s.quality}
                     : scope === "density" ? {density: s.density}
                         : scope === "modId" ? {modId: s.modId}
-                            : {outputDir: s.outputDir};
+                            : scope === "modelName" ? {modelName: s.modelName}
+                                : scope === "optimizationMode" ? {optimizationMode: s.optimizationMode}
+                                    : {outputDir: s.outputDir};
         applySettingsToIds(allIds, p);
         setApplyMenuOpen(false);
     }
@@ -128,36 +134,31 @@ export function SingleFileSettings({file}: Props) {
                 </Field>
             </Section>
 
-            {/* DENSITY */}
+            {/* PIXEL DENSITY */}
             <Section label="Pixel Density">
-                {/* Fix #8: label shows n×n pixels per voxel face */}
-                <Field label={`Density: ${s.density === 0 ? "Auto" : `${s.density}px`}`}>
-                    <div className="flex items-center gap-3">
-                        <span className="text-xs text-text-muted w-8 shrink-0">Auto</span>
-                        <input
-                            type="range"
-                            min={0}
-                            max={64}
-                            step={1}
-                            value={s.density}
-                            disabled={isReadOnly}
-                            onChange={(e) => patch({density: parseInt(e.target.value)})}
-                            className="flex-1 accent-accent"
-                        />
-                        <span className="text-xs text-text-muted w-8 shrink-0 text-right">64px</span>
-                    </div>
+                <Field label={`Density: ${s.density === 0 ? "Auto" : `${s.density}×${s.density} px/voxel`}`}>
+                    <input
+                        type="range"
+                        min={0}
+                        max={64}
+                        step={1}
+                        value={s.density}
+                        disabled={isReadOnly}
+                        onChange={(e) => patch({density: parseInt(e.target.value)})}
+                        className="w-full accent-accent"
+                    />
                     <div className="flex justify-between mt-1">
                         <span className="text-[11px] text-text-muted">
                             {s.density === 0
                                 ? "Resolved automatically by the binary"
-                                /* Fix #8: n×n pixels per voxel face */
+                                // issue 6: n×n not n
                                 : `${s.density}×${s.density} pixels per voxel face`}
                         </span>
                         <span className="text-[11px] text-text-muted mono">
                             atlas ~{atlasEstimate}px
                         </span>
                     </div>
-                    {/* Fix #1: show "Reset to Auto" only when density is NOT auto (i.e. != 0) */}
+                    {/* issue 6: show Reset to Auto only when density is NOT auto (i.e. != 0) */}
                     {s.density !== 0 && (
                         <button
                             className="text-[11px] text-accent underline mt-1"
@@ -182,6 +183,42 @@ export function SingleFileSettings({file}: Props) {
                 </Field>
             </Section>
 
+            {/* OPTIMIZATION MODE */}
+            <Section label="Optimization">
+                <Field label="Strategy">
+                    <div className="flex gap-0.5">
+                        <button
+                            className={`flex-1 btn-ghost text-xs py-1.5 rounded-r-none ${
+                                optimizationMode === "element"
+                                    ? "border-accent text-accent bg-accent/10"
+                                    : ""
+                            }`}
+                            disabled={isReadOnly}
+                            onClick={() => patch({optimizationMode: "element"})}
+                        >
+                            Element Count
+                        </button>
+                        <button
+                            className={`flex-1 btn-ghost text-xs py-1.5 rounded-l-none ${
+                                optimizationMode === "atlas"
+                                    ? "border-accent text-accent bg-accent/10"
+                                    : ""
+                            }`}
+                            disabled={isReadOnly}
+                            onClick={() => patch({optimizationMode: "atlas"})}
+                        >
+                            Atlas
+                        </button>
+                    </div>
+                    {/* issue 5: updated descriptions */}
+                    <p className="text-[11px] text-text-muted mt-1">
+                        {optimizationMode === "element"
+                            ? "3-D box merging — fewer MC elements, but larger png size"
+                            : "Dual-pass 2-D greedy — smaller png size, but a lot more MC elements"}
+                    </p>
+                </Field>
+            </Section>
+
             {/* APPLY TO ALL */}
             {files.length > 1 && (
                 <div className="relative">
@@ -198,7 +235,7 @@ export function SingleFileSettings({file}: Props) {
                             <div className="fixed inset-0 z-10" onClick={() => setApplyMenuOpen(false)}/>
                             <div className="absolute bottom-full left-0 right-0 mb-1 z-20
                                     bg-panel border border-border-bright rounded-lg shadow-2xl py-1">
-                                {(["all", "quality", "density", "modId", "outputDir"] as const).map((scope) => (
+                                {(["all", "quality", "density", "modId", "modelName", "outputDir", "optimizationMode"] as const).map((scope) => (
                                     <button
                                         key={scope}
                                         className="flex w-full px-4 py-1.5 text-xs text-left
@@ -209,7 +246,9 @@ export function SingleFileSettings({file}: Props) {
                                             : scope === "quality" ? "Quality only"
                                                 : scope === "density" ? "Density only"
                                                     : scope === "modId" ? "Mod ID only"
-                                                        : "Output directory only"}
+                                                        : scope === "modelName" ? "Model Name only"
+                                                            : scope === "optimizationMode" ? "Optimization mode only"
+                                                                : "Output directory only"}
                                     </button>
                                 ))}
                             </div>

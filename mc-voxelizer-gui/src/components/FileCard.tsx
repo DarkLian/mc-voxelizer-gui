@@ -54,9 +54,10 @@ export function FileCard({file, isSelected, onClick}: Props) {
 
     const isActive = file.status === "running" || file.status === "paused";
     const name = file.settings.modelName || file.sourcePath.split(/[\\/]/).pop();
+    const optMode = file.settings.optimizationMode === "atlas" ? "Atlas" : "Elem";
     const settingsSummary = `Q${file.settings.quality} · ${
         file.settings.density === 0 ? "Auto" : `D${file.settings.density}`
-    } · ${file.settings.modId}`;
+    } · ${file.settings.modId} · ${optMode}`;
 
     async function handleOpenOutput() {
         if (!file.outputJson) return;
@@ -130,22 +131,27 @@ export function FileCard({file, isSelected, onClick}: Props) {
                         <div className="progress-bar">
                             <div
                                 className={`progress-fill ${file.status === "paused"
-                                    ? "progress-fill-paused"
-                                    : "progress-fill-running"
-                                }`}
+                                    ? "bg-paused" : ""}`}
                                 style={{width: `${file.progress}%`}}
                             />
                         </div>
                         <div className="flex justify-between mt-0.5">
-                            <span className="text-[11px] text-text-muted">{file.progress}%</span>
-                            {file.elapsedMs > 0 && (
-                                <span className="text-[11px] text-text-muted">{formatElapsed(file.elapsedMs)}</span>
-                            )}
+                            <span className="text-[10px] text-text-muted">{file.progress}%</span>
+                            <span className="text-[10px] text-text-muted">
+                                {formatElapsed(file.elapsedMs)}
+                            </span>
                         </div>
                     </div>
                 )}
 
-                {/* Error summary */}
+                {/* Row 5: elapsed (done only) */}
+                {file.status === "done" && file.elapsedMs > 0 && (
+                    <p className="text-[11px] text-done mt-1">
+                        ✓ {formatElapsed(file.elapsedMs)}
+                    </p>
+                )}
+
+                {/* Row 6: error summary */}
                 {file.status === "error" && file.errorSummary && (
                     <p className="text-[11px] text-error mt-1 truncate" title={file.errorSummary}>
                         {file.errorSummary}
@@ -154,9 +160,9 @@ export function FileCard({file, isSelected, onClick}: Props) {
             </div>
 
             {/* Context menu button */}
-            <div className="flex items-start pt-2 pr-1.5 flex-shrink-0">
+            <div className="flex items-start pt-2 pr-1.5 flex-shrink-0" ref={menuRef}>
                 <button
-                    className="btn-icon opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                    className="btn-icon opacity-0 group-hover:opacity-100 transition-opacity w-6 h-6"
                     onClick={(e) => {
                         e.stopPropagation();
                         setMenuOpen((v) => !v);
@@ -169,23 +175,14 @@ export function FileCard({file, isSelected, onClick}: Props) {
                     <>
                         <div
                             className="fixed inset-0 z-10"
-                            onClick={() => setMenuOpen(false)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setMenuOpen(false);
+                            }}
                         />
-                        <div
-                            ref={menuRef}
-                            className="absolute right-1 top-8 z-20 bg-panel border border-border-bright
-                                rounded-lg shadow-2xl py-1 min-w-[170px] animate-fade-in"
-                        >
-                            <MenuItem
-                                icon={<Terminal size={13}/>}
-                                label="View Logs"
-                                onClick={() => {
-                                    openLogDrawer(file.id);
-                                    setMenuOpen(false);
-                                }}
-                            />
-
-                            {file.status === "done" && (
+                        <div className="absolute right-0 top-7 z-20 bg-panel border border-border-bright
+                               rounded-lg shadow-2xl py-1 min-w-[160px]">
+                            {file.outputJson && (
                                 <MenuItem
                                     icon={<FolderOpen size={13}/>}
                                     label="Open Output Folder"
@@ -197,6 +194,15 @@ export function FileCard({file, isSelected, onClick}: Props) {
                                 icon={<FileSearch size={13}/>}
                                 label="Reveal Source File"
                                 onClick={handleRevealSource}
+                            />
+
+                            <MenuItem
+                                icon={<Terminal size={13}/>}
+                                label="View Logs"
+                                onClick={() => {
+                                    openLogDrawer(file.id);
+                                    setMenuOpen(false);
+                                }}
                             />
 
                             <div className="border-t border-border my-1"/>

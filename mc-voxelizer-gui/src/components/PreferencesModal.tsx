@@ -9,7 +9,6 @@ export function PreferencesModal() {
     const prefs = useAppStore((s) => s.preferences);
     const {closePrefs, updatePreferences, resetPreferences} = useAppStore.getState();
 
-    // Local draft — only committed on Save
     const [draft, setDraft] = useState({...prefs});
 
     function save() {
@@ -59,7 +58,7 @@ export function PreferencesModal() {
                                     className="field flex-1 text-xs"
                                     value={draft.defaultOutputDir}
                                     onChange={(e) => patch({defaultOutputDir: e.target.value})}
-                                    placeholder="e.g. C:\Users\You\Desktop\output"
+                                    placeholder="e.g. C:\Users\you\Desktop"
                                 />
                                 <button className="btn-ghost px-2" onClick={browseDefault}>
                                     <FolderOpen size={14}/>
@@ -67,34 +66,29 @@ export function PreferencesModal() {
                             </div>
                         </Field>
 
-                        <Field label="Default Output Mode">
-                            <div className="flex flex-col gap-1.5">
-                                {(["fixed", "alongside"] as const).map((mode) => (
-                                    <label key={mode} className="flex items-center gap-2 cursor-pointer select-none">
-                                        <input
-                                            type="radio"
-                                            name="outputMode"
-                                            value={mode}
-                                            checked={draft.defaultOutputMode === mode}
-                                            onChange={() => patch({defaultOutputMode: mode})}
-                                            className="accent-accent"
-                                        />
-                                        <span className="text-sm text-text-secondary">
-                                            {mode === "fixed"
-                                                ? "Use the fixed directory above"
-                                                : "Place output next to the source file"}
-                                        </span>
-                                    </label>
-                                ))}
-                            </div>
+                        <Field label="Output Mode">
+                            <select
+                                className="field"
+                                value={draft.defaultOutputMode}
+                                onChange={(e) =>
+                                    patch({defaultOutputMode: e.target.value as "fixed" | "alongside"})
+                                }
+                            >
+                                <option value="fixed">Fixed directory (use above)</option>
+                                <option value="alongside">Alongside source file</option>
+                            </select>
                         </Field>
 
                         <Field label="Default Mod ID">
                             <input
-                                className={`field mono ${draft.defaultModId && !isValidModId(draft.defaultModId) ? "border-error/60" : ""}`}
+                                className={`field mono text-sm ${
+                                    draft.defaultModId && !isValidModId(draft.defaultModId)
+                                        ? "border-error/60"
+                                        : ""
+                                }`}
                                 value={draft.defaultModId}
-                                placeholder="mymod"
                                 onChange={(e) => patch({defaultModId: e.target.value})}
+                                placeholder="mymod"
                             />
                         </Field>
 
@@ -110,20 +104,21 @@ export function PreferencesModal() {
                             </select>
                         </Field>
 
-                        <Field label="Default Density (pixels per voxel face)">
+                        {/* issue 2: added space before "px" → "1 px", "2 px" etc. */}
+                        <Field label="Default Density">
                             <select
                                 className="field"
                                 value={draft.defaultDensity}
                                 onChange={(e) => patch({defaultDensity: parseInt(e.target.value)})}
                             >
-                                <option value={0}>0 — Auto (recommended)</option>
+                                <option value={0}>Auto (recommended)</option>
                                 {Array.from({length: 64}, (_, i) => i + 1).map((d) => (
                                     <option key={d} value={d}>{d} px</option>
                                 ))}
                             </select>
                         </Field>
 
-                        {/* Fix #4: "Solid fill by default" (DEFAULT_PREFERENCES.defaultSolidFill is now true) */}
+                        {/* issue 3: defaultSolidFill is false in DEFAULT_PREFERENCES */}
                         <Field label="">
                             <label className="flex items-center gap-2 cursor-pointer select-none">
                                 <input
@@ -135,9 +130,41 @@ export function PreferencesModal() {
                                 <span className="text-sm text-text-secondary">Solid fill by default</span>
                             </label>
                         </Field>
+
+                        {/* issue 5: updated descriptions */}
+                        <Field label="Default Optimization">
+                            <div className="flex gap-0.5">
+                                <button
+                                    className={`flex-1 btn-ghost text-xs py-1.5 rounded-r-none ${
+                                        draft.defaultOptimizationMode === "element"
+                                            ? "border-accent text-accent bg-accent/10"
+                                            : ""
+                                    }`}
+                                    onClick={() => patch({defaultOptimizationMode: "element"})}
+                                >
+                                    Element Count
+                                </button>
+                                <button
+                                    className={`flex-1 btn-ghost text-xs py-1.5 rounded-l-none ${
+                                        draft.defaultOptimizationMode === "atlas"
+                                            ? "border-accent text-accent bg-accent/10"
+                                            : ""
+                                    }`}
+                                    onClick={() => patch({defaultOptimizationMode: "atlas"})}
+                                >
+                                    Atlas
+                                </button>
+                            </div>
+                            <p className="text-[11px] text-text-muted mt-1">
+                                {draft.defaultOptimizationMode === "element"
+                                    ? "3-D box merging — fewer MC elements, but larger png size"
+                                    : "Dual-pass 2-D greedy — smaller png size, but a lot more MC elements"}
+                            </p>
+                        </Field>
+
                     </Section>
 
-                    {/* Fix #3: Notifications section removed entirely */}
+                    {/* issue 4: Notifications section removed entirely */}
 
                     {/* ADVANCED */}
                     <Section label="Advanced">

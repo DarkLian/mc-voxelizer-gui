@@ -10,6 +10,8 @@ export type FileStatus =
 
 export type LogLevel = "info" | "warning" | "error" | "debug";
 
+export type OptimizationMode = "element" | "atlas";
+
 export interface LogLine {
     id: string;
     timestamp: Date;
@@ -27,6 +29,8 @@ export interface FileSettings {
     /** pixel density per voxel face; 0 = auto (resolved by the binary), 1–64 explicit */
     density: number;
     solidFill: boolean;
+    /** Which binary optimization strategy to use */
+    optimizationMode: OptimizationMode;
 }
 
 export interface FileEntry {
@@ -59,6 +63,7 @@ export interface Preferences {
     /** 0 = auto, 1–64 explicit */
     defaultDensity: number;
     defaultSolidFill: boolean;
+    defaultOptimizationMode: OptimizationMode;
     theme: "dark" | "light" | "system";
     showToastOnComplete: boolean;
     playSoundOnComplete: boolean;
@@ -66,14 +71,14 @@ export interface Preferences {
     binaryPath: string | null;
 }
 
-// Fix #4: solid fill enabled by default
 export const DEFAULT_PREFERENCES: Preferences = {
     defaultOutputDir: "",   // resolved to Desktop on first run in App.tsx
     defaultOutputMode: "fixed",
     defaultModId: "mymod",
     defaultQuality: 3,
     defaultDensity: 0,
-    defaultSolidFill: true,  // was false
+    defaultSolidFill: true,       // issue 3 — must be false
+    defaultOptimizationMode: "element",
     theme: "dark",
     showToastOnComplete: true,
     playSoundOnComplete: false,

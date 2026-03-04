@@ -1,6 +1,6 @@
 [package]
 name = "mc-voxelizer-gui"
-version = "1.4.0"
+version = "1.5.0"
 description = "Minecraft Voxelizer GUI"
 authors = ["DarkAddons"]
 edition = "2021"

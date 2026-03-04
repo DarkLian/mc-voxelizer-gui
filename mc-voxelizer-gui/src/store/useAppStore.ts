@@ -25,6 +25,7 @@ function makeDefaultSettings(
         quality: prefs.defaultQuality,
         density: prefs.defaultDensity,
         solidFill: prefs.defaultSolidFill,
+        optimizationMode: prefs.defaultOptimizationMode ?? "element", // ← new
     };
 }
 
@@ -160,16 +161,10 @@ export const useAppStore = create<AppStore>()(
 
             clearDone: () => {
                 set((s) => ({
-                    files: s.files.filter(
-                        (f) => f.status !== "done"
-                    ),
+                    files: s.files.filter((f) => f.status !== "done"),
                     selectedIds: new Set(
                         [...s.selectedIds].filter((id) =>
-                            s.files.find(
-                                (f) =>
-                                    f.id === id &&
-                                    f.status !== "done"
-                            )
+                            s.files.find((f) => f.id === id && f.status !== "done")
                         )
                     ),
                 }));
@@ -269,13 +264,15 @@ export const useAppStore = create<AppStore>()(
                         ...validIds.filter((id) => !s.conversionQueue.includes(id)),
                     ],
                     files: s.files.map((f) =>
-                        idSet.has(f.id) ? {
-                            ...f,
-                            status: "queued" as FileStatus,
-                            log: [],
-                            progress: 0,
-                            errorSummary: null
-                        } : f
+                        idSet.has(f.id)
+                            ? {
+                                ...f,
+                                status: "queued" as FileStatus,
+                                log: [],
+                                progress: 0,
+                                errorSummary: null,
+                            }
+                            : f
                     ),
                 }));
             },
@@ -438,6 +435,26 @@ export const useAppStore = create<AppStore>()(
         {
             name: "mc-voxelizer-prefs",
             partialize: (s) => ({preferences: s.preferences}),
+
+            // ← new: deep-merge so new fields in DEFAULT_PREFERENCES are always
+            // present even when loading old persisted state that predates them.
+            merge: (persisted, current) => {
+                const p = (persisted as typeof current).preferences ?? {};
+                const storedDir: string = p.defaultOutputDir ?? "";
+                // Strip legacy "\output" or "/output" suffix (issue 1)
+                const cleanDir = storedDir.replace(/[/\\]output$/i, "");
+                return {
+                    ...current,
+                    preferences: {
+                        ...current.preferences,   // DEFAULT_PREFERENCES as base
+                        ...p,                     // override with stored values
+                        defaultOutputDir: cleanDir,
+                        // Guard fields added after v1.3 — never let them be undefined
+                        defaultSolidFill: p.defaultSolidFill ?? true,
+                        defaultOptimizationMode: p.defaultOptimizationMode ?? "element",
+                    },
+                };
+            },
         }
     )
 );
